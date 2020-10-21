@@ -5,7 +5,7 @@ def main():
 
 def ex5(frase):
     count = 0
-    for i in range(len(frase)-1):
+    for i in range(len(frase)-3):
         if frase[i:i+4] == 'Emma':
             count = count+1
     return count

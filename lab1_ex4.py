@@ -7,7 +7,7 @@ def main():
 
 
 def ex4(a):
-    for i in range(len(a)-1):
+    for i in range(len(a)):
         if a[i] % 5 == 0:
             print('L\'elemento ', i, ' è divisibile per 5 e vale: ', a[i])
 
