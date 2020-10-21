@@ -3,14 +3,13 @@ def main():
     lung = int(input('Inserire lunghezza lista: '))
     for i in range(lung):
         x.append(int(input('Inserire l\'elemento '+str(i)+': ')))
-    print('Il primo e l\'ultimo elemento sono uguali? ', ex3(x))
+    ex4(x)
 
 
-def ex3(a):
-    if a[0] == a[-1]:
-        return True
-    else:
-        return False
+def ex4(a):
+    for i in range(len(a)-1):
+        if a[i] % 5 == 0:
+            print('L\'elemento ', i, ' è divisibile per 5 e vale: ', a[i])
 
 
 if __name__ == '__main__':
