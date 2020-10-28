@@ -13,7 +13,7 @@ def main():
 
 
 def ex1():
-    df = pd.read_csv('resources_lab2/sales_data.csv')
+    df = pd.read_csv('Lab2/resources_lab2/sales_data.csv')
     profit_list = df['total_profit'].values
     months = df['month_number'].values
     plt.figure(1)
@@ -27,7 +27,7 @@ def ex1():
 
 
 def ex2():
-    df = pd.read_csv('resources_lab2/sales_data.csv')
+    df = pd.read_csv('Lab2/resources_lab2/sales_data.csv')
     profit_list = df['total_profit'].values
     months = df['month_number'].values
     plt.figure(2)
@@ -43,7 +43,7 @@ def ex2():
 
 
 def ex3():
-    df = pd.read_csv('resources_lab2/sales_data.csv')
+    df = pd.read_csv('Lab2/resources_lab2/sales_data.csv')
     months = df['month_number'].values
     face_cream_sales_data = df['facecream'].values
     face_wash_sales_data = df['facewash'].values
@@ -74,7 +74,7 @@ def ex3():
 
 
 def ex4():
-    df = pd.read_csv('resources_lab2/sales_data.csv')
+    df = pd.read_csv('Lab2/resources_lab2/sales_data.csv')
     months = df['month_number'].tolist()
     tooth_paste_sales_data = df['toothpaste'].values
     plt.figure(4)
@@ -89,7 +89,7 @@ def ex4():
 
 
 def ex5():
-    df = pd.read_csv('resources_lab2/sales_data.csv')
+    df = pd.read_csv('Lab2/resources_lab2/sales_data.csv')
     months = df['month_number'].tolist()
     bathing_soap_sales_data = df['bathingsoap'].tolist()
     plt.figure(5)
@@ -99,12 +99,12 @@ def ex5():
     plt.xticks(months)
     plt.grid(True, linewidth=0.5, linestyle="--")
     plt.title('Bathing soap sales data')
-    plt.savefig('figures_lab2/sales_data_of_bathing_soap.png', dpi=150)
+    plt.savefig('Lab2/figures_lab2/sales_data_of_bathing_soap.png', dpi=150)
     plt.show()
 
 
 def ex6():
-    df = pd.read_csv('resources_lab2/sales_data.csv')
+    df = pd.read_csv('Lab2/resources_lab2/sales_data.csv')
     profit_list = df['total_profit'].values
     plt.figure(6)
     profit_range = [150e3, 175e3, 200e3, 225e3, 250e3, 300e3, 350e3]
@@ -118,7 +118,7 @@ def ex6():
 
 
 def ex7():
-    df = pd.read_csv('resources_lab2/sales_data.csv')
+    df = pd.read_csv('Lab2/resources_lab2/sales_data.csv')
     months = df['month_number'].values
     bathing_soap = df['bathingsoap'].values
     face_wash_sales_data = df['facewash'].values
