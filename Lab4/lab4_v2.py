@@ -96,7 +96,7 @@ class Line:
         self._label = line_dict['label']
         self._length = line_dict['length']
         self._successive = {}
-        self._state = 'free'
+        self.state = 'free'
 
     @property
     def label(self):
@@ -241,41 +241,95 @@ class Network:
     # Modificare find_best_snr e find_best_latency: se trova un path libero, lo occupa.
     # Se ne trova uno migliore, libera quello di prima e ne occupa uno nuovo.
     # Se non trova path liberi, deve tornare snr=zero e latency=none
+
     def find_best_snr(self, node_input, node_output):
 
         best_snr = 0
         best_index = 0
         first_cycle = True
+        no_free_paths = True
 
         for i in range(len(self.weighted_paths['path'])):
             current_path = self.weighted_paths['path'][i]
+            line_list = list()
+            acc = 0
             if (current_path[0] == node_input) and (current_path[-1] == node_output):
-                current_snr = self.weighted_paths['snr'][i]
-                if first_cycle:
-                    best_snr = current_snr
-                    first_cycle = False
-                    best_index = i
-                elif current_snr > best_snr:
-                    best_snr = current_snr
-                    best_index = i
+                for cont in range(len(current_path)+3):
+                    if cont == 1:
+                        line_list.append(current_path[0])
+                    elif (cont - 1) % 3 == 0:
+                        line_list[acc] = line_list[acc] + current_path[cont-1]
+                        if cont < len(current_path):
+                            line_list.append(current_path[cont-1])
+                        acc = acc + 1
+
+                free_path = True
+                for line_index in range(len(line_list)):
+                    if self.lines[line_list[line_index]].state == 'occupied':
+                        free_path = False
+
+                if free_path:
+                    no_free_paths = False
+                    current_snr = self.weighted_paths['snr'][i]
+                    if first_cycle:
+                        best_snr = current_snr
+                        first_cycle = False
+                        best_index = i
+                        for line_index in range(len(line_list)):
+                            self.lines[line_list[line_index]].state = 'occupied'
+
+                    elif current_snr > best_snr:
+                        best_snr = current_snr
+                        best_index = i
+                        for line_index in range(len(line_list)):
+                            self.lines[line_list[line_index]].state = 'occupied'
+        if no_free_paths:
+            best_index = -1
         return best_index
 
     def find_best_latency(self, node_input, node_output):
         best_latency = 0
         best_index = 0
         first_cycle = True
+        no_free_paths = True
 
         for i in range(len(self.weighted_paths['path'])):
             current_path = self.weighted_paths['path'][i]
+            line_list = list()
+            acc = 0
             if (current_path[0] == node_input) and (current_path[-1] == node_output):
-                current_latency = self.weighted_paths['latency'][i]
-                if first_cycle:
-                    best_latency = current_latency
-                    first_cycle = False
-                    best_index = i
-                elif current_latency < best_latency:
-                    best_latency = current_latency
-                    best_index = i
+                for cont in range(len(current_path)+3):
+                    if cont == 1:
+                        line_list.append(current_path[0])
+                    elif (cont - 1) % 3 == 0:
+                        line_list[acc] = line_list[acc] + current_path[cont -1]
+                        if cont < len(current_path):
+                            line_list.append(current_path[cont - 1])
+                        acc = acc + 1
+
+                free_path = True
+                for line_index in range(len(line_list)):
+                    if self.lines[line_list[line_index]].state == 'occupied':
+                        free_path = False
+
+                if free_path:
+                    no_free_paths = False
+
+                    current_latency = self.weighted_paths['latency'][i]
+                    if first_cycle:
+                        best_latency = current_latency
+                        first_cycle = False
+                        best_index = i
+                        for line_index in range(len(line_list)):
+                            self.lines[line_list[line_index]].state = 'occupied'
+
+                    elif current_latency < best_latency:
+                        best_latency = current_latency
+                        best_index = i
+                        for line_index in range(len(line_list)):
+                            self.lines[line_list[line_index]].state = 'occupied'
+        if no_free_paths:
+            best_index = -1
         return best_index
 
     def stream(self, connection_list, snr_or_latency_choice='latency'):
@@ -284,15 +338,26 @@ class Network:
             for i in range(len(connection_list)):
                 best_path_index_list.append(Network.find_best_snr(self, connection_list[i].input_node,
                                                                   connection_list[i].output_node))
-                connection_list[i].latency = self.weighted_paths['latency'][best_path_index_list[i]]
-                connection_list[i].snr = self.weighted_paths['snr'][best_path_index_list[i]]
+                if best_path_index_list[i] > -1:
+                    connection_list[i].latency = self.weighted_paths['latency'][best_path_index_list[i]]
+                    connection_list[i].snr = self.weighted_paths['snr'][best_path_index_list[i]]
+                    # print(self.weighted_paths['path'][best_path_index_list[i]])
+                else:
+                    connection_list[i].latency = None
+                    connection_list[i].snr = 0
 
         elif snr_or_latency_choice == 'latency':
             for i in range(len(connection_list)):
                 best_path_index_list.append(Network.find_best_latency(self, connection_list[i].input_node,
                                                                       connection_list[i].output_node))
-                connection_list[i].latency = self.weighted_paths['latency'][best_path_index_list[i]]
-                connection_list[i].snr = self.weighted_paths['snr'][best_path_index_list[i]]
+
+                if best_path_index_list[i] > -1:
+                    connection_list[i].latency = self.weighted_paths['latency'][best_path_index_list[i]]
+                    connection_list[i].snr = self.weighted_paths['snr'][best_path_index_list[i]]
+                    # print(self.weighted_paths['path'][best_path_index_list[i]])
+                else:
+                    connection_list[i].latency = None
+                    connection_list[i].snr = 0
 
         else:
             print('Choice not valid')
@@ -347,6 +412,7 @@ def main():
         for label2 in node_labels:
             if label1 != label2:
                 pairs.append(label1+label2)
+
     # Columns = ['path', 'latency', 'noise', 'snr']
     paths = []
     latencies = []
@@ -374,7 +440,7 @@ def main():
     df['noise'] = noises
     df['snr'] = snrs
     network.weighted_paths = df
-    print(df)
+
     # Input/Output generation
     input_node = []
     output_node = []
@@ -433,19 +499,19 @@ def main():
     plt.show()
 
     # Stream call
-    network.stream(connection_list, 'latency')
+#    network.stream(connection_list, 'latency')
 
-    print('Best latency case')
-    for i in range(len(input_node)):
-        print('For input = ', input_node[i], ', output = ', output_node[i], ', the latency is: ',
-              connection_list[i].latency)
-        latency_list.append(connection_list[i].latency)
+#    print('Best latency case')
+#    for i in range(len(input_node)):
+#        print('For input = ', input_node[i], ', output = ', output_node[i], ', the latency is: ',
+#              connection_list[i].latency)
+#        latency_list.append(connection_list[i].latency)
 
-    latency_array = np.array(latency_list)
+#    latency_array = np.array(latency_list)
 
-    plt.hist(latency_array, color='blue', edgecolor='black',
-             bins=30)
-    plt.show()
+#    plt.hist(latency_array, color='blue', edgecolor='black',
+#             bins=30)
+#    plt.show()
 
 
 if __name__ == '__main__':
