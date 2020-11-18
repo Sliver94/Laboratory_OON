@@ -9,12 +9,13 @@ c_network = 2/3 * c              # Speed of signal on the network
 json_path_global = 'nodes.json'  # Json file address
 
 
-class SignalInformation:
-    def __init__(self, power, path):
+class Lightpath:
+    def __init__(self, power, path, channel):
         self._signal_power = power
         self._path = path
         self._noise_power = 0.0
         self._latency = 0.0
+        self._channel = channel
 
     @property
     def signal_power(self):
@@ -43,6 +44,10 @@ class SignalInformation:
     @latency.setter
     def latency(self, latency):
         self._latency = latency
+
+    @property
+    def channel(self):
+        return self._channel
 
     def add_noise(self, noise):
         self.noise_power += noise
@@ -93,10 +98,13 @@ class Node:
 
 class Line:
     def __init__(self, line_dict):
+        number_of_channels = 10
         self._label = line_dict['label']
         self._length = line_dict['length']
         self._successive = {}
-        self.state = 'free'
+        self._state = list()
+        for i in range(number_of_channels):
+            self._state.append('free')
 
     @property
     def label(self):
@@ -147,10 +155,12 @@ class Line:
 
 class Network:
     def __init__(self, json_path, df):
+        self._route_space = pd.DataFrame()
         self._weighted_paths = df
         node_json = json.load(open(json_path, 'r'))
         self._nodes = {}
         self._lines = {}
+
         for node_label in node_json:
             # Create the node instance
             node_dict = node_json[node_label]
@@ -169,6 +179,8 @@ class Network:
                 line = Line(line_dict)
                 self._lines[line_label] = line
 
+
+
     @property
     def weighted_paths(self):
         return self._weighted_paths
@@ -184,6 +196,25 @@ class Network:
     @property
     def lines(self):
         return self._lines
+
+#    @property
+#    def route_space(self):
+#        return self._route_space
+
+#    @route_space.setter
+#    def route_space(self, route_space):
+#        self._route_space = route_space
+
+    def set_route_space(self):
+        route_space_dict = {}
+        for i in range(len(self.weighted_paths['path'])):
+            route_space_dict[self.weighted_paths['path'][i]] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        self._route_space = pd.DataFrame(route_space_dict)
+        print(route_space_dict)
+
+
+#    def set_weighted_paths(self):
+
 
     def draw(self):
         nodes = self.nodes
@@ -238,12 +269,8 @@ class Network:
         propagated_signal_information = start_node.propagate(signal_information)
         return propagated_signal_information
 
-    # Modificare find_best_snr e find_best_latency: se trova un path libero, lo occupa.
-    # Se ne trova uno migliore, libera quello di prima e ne occupa uno nuovo.
-    # Se non trova path liberi, deve tornare snr=zero e latency=none
-
     def find_best_snr(self, node_input, node_output):
-
+        number_of_channels = 10
         best_snr = 0
         best_index = 0
         first_cycle = True
@@ -255,6 +282,7 @@ class Network:
             line_list = list()
             acc = 0
             if (current_path[0] == node_input) and (current_path[-1] == node_output):
+
                 for cont in range(len(current_path)+3):
                     if cont == 1:
                         line_list.append(current_path[0])
@@ -264,41 +292,57 @@ class Network:
                             line_list.append(current_path[cont-1])
                         acc = acc + 1
 
-                free_path = True
-                for line_index in range(len(line_list)):
-                    if self.lines[line_list[line_index]].state == 'occupied':
-                        free_path = False
+                free_path = list()
+                for channel in range(number_of_channels):
+                    free_path.append(True)
 
-                if free_path:
-                    no_free_paths = False
-                    current_snr = self.weighted_paths['snr'][i]
-                    if first_cycle:
-                        best_snr = current_snr
-                        first_cycle = False
-                        best_index = i
-                        best_line_list = line_list
-                        for line_index in range(len(line_list)):
-                            self.lines[line_list[line_index]].state = 'occupied'
+                for channel in range(number_of_channels):
+                    for line_index in range(len(line_list)):
+                        if self.lines[line_list[line_index]].state[channel] == 'occupied':
+                            free_path[channel] = False
 
-                    elif current_snr > best_snr:
-                        best_snr = current_snr
-                        for line_index in range(len(best_line_list)):
-                            self.lines[best_line_list[line_index]].state = 'free'
+                for channel in range(number_of_channels):
+                    if free_path[channel]:
+                        no_free_paths = False
+                        current_snr = self.weighted_paths['snr'][i]
+                        if first_cycle:
+                            best_snr = current_snr
+                            first_cycle = False
+                            best_index = i
+                            best_line_list = line_list
+                            for line_index in range(len(line_list)):
+                                self.lines[line_list[line_index]].state[channel] = 'occupied'
+                            break
 
-                        best_index = i
-                        best_line_list = line_list
-                        for line_index in range(len(line_list)):
-                            self.lines[line_list[line_index]].state = 'occupied'
+                        elif current_snr > best_snr:
+                            best_snr = current_snr
+
+                            for line_index in range(len(best_line_list)):
+                                self.lines[line_list[line_index]].state[channel] = 'free'
+
+                            best_index = i
+                            best_line_list = line_list
+
+                            for line_index in range(len(line_list)):
+                                self.lines[line_list[line_index]].state[channel] = 'occupied'
+                            break
+
         if no_free_paths:
             best_index = -1
+
+        #for line_index in best_line_list:
+        #    print(best_line_list)
+        #    print(self.lines[line_index].state)
+
         return best_index
 
+    # copiare find_best_snr
     def find_best_latency(self, node_input, node_output):
+        number_of_channels = 10
         best_latency = 0
         best_index = 0
         first_cycle = True
         no_free_paths = True
-        best_line_list = list()
 
         for i in range(len(self.weighted_paths['path'])):
             current_path = self.weighted_paths['path'][i]
@@ -316,8 +360,10 @@ class Network:
 
                 free_path = True
                 for line_index in range(len(line_list)):
-                    if self.lines[line_list[line_index]].state == 'occupied':
-                        free_path = False
+                    for channel in range(number_of_channels):
+                        if self.lines[line_list[line_index]].state[channel] == 'occupied':
+                            free_path = False
+#                            print(self.lines[line_list[line_index]].state[channel])
 
                 if free_path:
                     no_free_paths = False
@@ -327,20 +373,14 @@ class Network:
                         best_latency = current_latency
                         first_cycle = False
                         best_index = i
-                        best_line_list = line_list
                         for line_index in range(len(line_list)):
                             self.lines[line_list[line_index]].state = 'occupied'
 
                     elif current_latency < best_latency:
                         best_latency = current_latency
-                        for line_index in range(len(best_line_list)):
-                            self.lines[best_line_list[line_index]].state = 'free'
-
                         best_index = i
-                        best_line_list = line_list
                         for line_index in range(len(line_list)):
                             self.lines[line_list[line_index]].state = 'occupied'
-
         if no_free_paths:
             best_index = -1
         return best_index
@@ -354,7 +394,8 @@ class Network:
                 if best_path_index_list[i] > -1:
                     connection_list[i].latency = self.weighted_paths['latency'][best_path_index_list[i]]
                     connection_list[i].snr = self.weighted_paths['snr'][best_path_index_list[i]]
-                    print(self.weighted_paths['path'][best_path_index_list[i]])
+#                    print(self.weighted_paths['path'][best_path_index_list[i]])
+
                 else:
                     connection_list[i].latency = 0
                     connection_list[i].snr = None
@@ -367,7 +408,7 @@ class Network:
                 if best_path_index_list[i] > -1:
                     connection_list[i].latency = self.weighted_paths['latency'][best_path_index_list[i]]
                     connection_list[i].snr = self.weighted_paths['snr'][best_path_index_list[i]]
-                    #print(self.weighted_paths['path'][best_path_index_list[i]])
+                    # print(self.weighted_paths['path'][best_path_index_list[i]])
                 else:
                     connection_list[i].latency = 0
                     connection_list[i].snr = None
@@ -419,6 +460,7 @@ def main():
     df = pd.DataFrame()
     network = Network(json_path_global, df)
     network.connect()
+
     node_labels = network.nodes.keys()
     pairs = []
     for label1 in node_labels:
@@ -439,7 +481,7 @@ def main():
             paths.append(path_string[:-2])
 
             # Propagation
-            signal_information = SignalInformation(0.001, path)
+            signal_information = Lightpath(0.001, path, 1)
             signal_information = network.propagate(signal_information)
             latencies.append(signal_information.latency)
             noises.append(signal_information.noise_power)
@@ -453,6 +495,7 @@ def main():
     df['noise'] = noises
     df['snr'] = snrs
     network.weighted_paths = df
+    network.set_route_space()
 
     # Input/Output generation
     input_node = []
@@ -499,10 +542,10 @@ def main():
     snr_list = list()
     latency_list = list()
 
-    print('Best snr case')
+#    print('Best snr case')
     for i in range(len(input_node)):
-        print('For input = ', input_node[i], ', output = ', output_node[i], ', the SNR is: ',
-              connection_list[i].snr)
+#        print('For input = ', input_node[i], ', output = ', output_node[i], ', the SNR is: ',
+#              connection_list[i].snr)
         snr_list.append(connection_list[i].snr)
 
     snr_array = np.array(snr_list)
