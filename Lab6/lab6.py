@@ -68,6 +68,7 @@ class Node:
         self._position = node_dict['position']
         self._connected_nodes = node_dict['connected_nodes']
         self._successive = {}
+        self._switching_matrix = {}
 
     @property
     def label(self):
@@ -89,6 +90,14 @@ class Node:
     def successive(self, successive):
         self._successive = successive
 
+    @property
+    def switching_matrix(self):
+        return self._switching_matrix
+
+    @switching_matrix.setter
+    def switching_matrix(self, switching_matrix):
+        self._switching_matrix = switching_matrix
+
     def propagate(self, signal_information):
         path = signal_information.path
         if len(path) > 1:
@@ -107,7 +116,7 @@ class Line:
         self._successive = {}
         self._state = list()
         for i in range(number_of_channels):
-            self._state.append('free')
+            self._state.append(1)
 
     @property
     def label(self):
@@ -210,7 +219,27 @@ class Network:
         route_space_dict = {}
         number_of_channels = 10
         for i in range(len(self.weighted_paths['path'])):
-            route_space_dict[self.weighted_paths['path'][i]] = np.zeros(number_of_channels)
+            current_path = self.weighted_paths['path'][i]
+
+            # Generates the list of the lines in the best path
+            line_list = list()
+            node_list = list()
+            for index in range(int(((len(current_path) - 4) / 3)) + 1):
+                line_list.append(current_path[3 * index] + current_path[3 * index + 3])
+                node_list.append(current_path[3 * index])
+            node_list.append(current_path[-1])
+
+            block = np.ones(number_of_channels)
+            for channel in range(number_of_channels):
+                for line in line_list:
+                    block[channel] = block[channel] * self.lines[line].state[channel]
+                    if block[channel] == 0:
+                        break
+                for node_index in range(2, len(node_list)-1):
+                    block[channel] = block[channel] * self.nodes[node_list[node_index]].switching_matrix[node_list[node_index-1]][node_list[node_index+1]][channel]
+                    if block[channel] == 0:
+                        break
+            route_space_dict[self.weighted_paths['path'][i]] = block
         self._route_space = pd.DataFrame(route_space_dict)
 
     def initialize(self):
@@ -288,6 +317,7 @@ class Network:
         return paths
 
     def connect(self):
+        number_of_channels = 10
         nodes_dict = self.nodes
         lines_dict = self.lines
         for node_label in nodes_dict:
@@ -297,6 +327,14 @@ class Network:
                 line = lines_dict[line_label]
                 line.successive[connected_node] = nodes_dict[connected_node]
                 node.successive[line_label] = lines_dict[line_label]
+                output_connected_node_dict = {}
+                for connected_node2 in node.connected_nodes:
+                    if connected_node == connected_node2:
+                        output_connected_node_dict[connected_node2] = np.zeros(number_of_channels)
+                    else:
+                        for channel in range(number_of_channels):
+                            output_connected_node_dict[connected_node2] = np.ones(number_of_channels)
+                node.switching_matrix[connected_node] = output_connected_node_dict
 
     def propagate(self, signal_information):
         path = signal_information.path
@@ -315,7 +353,7 @@ class Network:
 
             if (current_path[0] == node_input) and (current_path[-1] == node_output):
                 for channel in range(number_of_channels):
-                    if self.route_space[current_path][channel] == 0:
+                    if self.route_space[current_path][channel] == 1:
                         if self.weighted_paths['snr'][i] > best_snr:
                             best_snr = self.weighted_paths['snr'][i]
                             best_index = i
@@ -326,6 +364,8 @@ class Network:
             best_path = self.weighted_paths['path'][best_index]
             line_list = list()
             line_list_arrow = list()
+            line_list.append(best_path[0]+best_path[3])
+            line_list_arrow.append(best_path[0] + '->' + best_path[3])
 
             # Generates the list of the lines in the best path
             for i in range(int(((len(best_path)-4)/3))+1):
@@ -333,11 +373,12 @@ class Network:
                 line_list_arrow.append(best_path[3*i] + '->' + best_path[3*i+3])
 
             for line_index in range(len(line_list)):
-                self.lines[line_list[line_index]].state[free_channel_index] = 'occupied'
+                self.lines[line_list[line_index]].state[free_channel_index] = 0
 
             self.update_route_space(line_list_arrow, free_channel_index)
 
         return best_index
+
 
     def find_best_latency(self, node_input, node_output):
         number_of_channels = 10
@@ -350,7 +391,7 @@ class Network:
 
             if (current_path[0] == node_input) and (current_path[-1] == node_output):
                 for channel in range(number_of_channels):
-                    if self.route_space[current_path][channel] == 0:
+                    if self.route_space[current_path][channel] == 1:
                         if self.weighted_paths['latency'][i] < best_latency:
                             best_latency = self.weighted_paths['latency'][i]
                             best_index = i
@@ -361,6 +402,7 @@ class Network:
             best_path = self.weighted_paths['path'][best_index]
             line_list = list()
             line_list_arrow = list()
+            line_list.append(best_path[0]+best_path[3])
 
             # Generates the list of the lines in the best path
             for i in range(int(((len(best_path)-4)/3))+1):
@@ -368,7 +410,7 @@ class Network:
                 line_list_arrow.append(best_path[3*i] + '->' + best_path[3*i+3])
 
             for line_index in range(len(line_list)):
-                self.lines[line_list[line_index]].state[free_channel_index] = 'occupied'
+                self.lines[line_list[line_index]].state[free_channel_index] = 0
 
             self.update_route_space(line_list_arrow, free_channel_index)
 
@@ -378,7 +420,7 @@ class Network:
         for path in self.route_space.keys():
             for line_index in range(len(line_list_arrow)):
                 if line_list_arrow[line_index] in path:
-                    self.route_space[path][free_channel_index] = 1
+                    self.route_space[path][free_channel_index] = 0
 
     def stream(self, connection_list, snr_or_latency_choice='latency'):
         best_path_index_list = []
