@@ -6,12 +6,15 @@ import random as rnd
 import math
 
 
+# global variables
 c = 3 * (10 ** 8)                # Speed of light
 c_network = 2/3 * c              # Speed of signal on the network
 json_path_global = 'nodes.json'  # Json file address
 snr_or_latency_choice = 'snr'
 
 
+# Models the lightpath physical parameters: contains signal power, signal path, noise power,
+# lightpath latency and the selected channel
 class Lightpath:
     def __init__(self, power, path, channel):
         self._signal_power = power
@@ -52,16 +55,21 @@ class Lightpath:
     def channel(self):
         return self._channel
 
+    # Updates noise power
     def add_noise(self, noise):
         self.noise_power += noise
 
+    # Updates lightpath latency
     def add_latency(self, latency):
         self.latency += latency
 
+    # Updates signal path
     def next(self):
         self.path = self.path[1:]
 
 
+# Models the nodes of the network: contains the name of the node, its position, the list of the connected nodes and
+# lines and the switching matrix
 class Node:
     def __init__(self, node_dict):
         self._label = node_dict['label']
@@ -98,6 +106,7 @@ class Node:
     def switching_matrix(self, switching_matrix):
         self._switching_matrix = switching_matrix
 
+    # Propagates the signal information along the node
     def propagate(self, signal_information):
         path = signal_information.path
         if len(path) > 1:
@@ -108,6 +117,8 @@ class Node:
         return signal_information
 
 
+# Models the lines of the network: contains the name of the line, its length, the list of the connected nodes and
+# state of the channels of the line
 class Line:
     def __init__(self, line_dict):
         number_of_channels = 10
@@ -142,14 +153,17 @@ class Line:
     def state(self, state):
         self._state = state
 
+    # Generates the latency of the line
     def latency_generation(self):
         latency = self.length / c_network
         return latency
 
+    # Generates the noise of the line
     def noise_generation(self, signal_power):
         noise = 1e-3 * signal_power * self.length
         return noise
 
+    # Propagates the signal information along the line
     def propagate(self, signal_information):
         # Update latency
         latency = self.latency_generation()
@@ -165,6 +179,9 @@ class Line:
         return signal_information
 
 
+# Models the the network: contains the route space, the list of all the paths with the related snr/latency
+# (in weighted paths), the nodes and the lines of the network and the list of nodes and lines belonging to
+# every possible path
 class Network:
     def __init__(self, json_path):
         self._route_space = pd.DataFrame()
@@ -175,6 +192,7 @@ class Network:
         self._line_list_dict = {}
         self._node_list_dict = {}
 
+        # Creation of node and line instances
         for node_label in node_json:
             # Create the node instance
             node_dict = node_json[node_label]
@@ -225,7 +243,9 @@ class Network:
     def node_list_dict(self):
         return self._node_list_dict
 
+    # Initializes the network class
     def initialize(self):
+        # Creates a data frame that will be filled with all the possible paths information.
         df = pd.DataFrame()
         node_labels = self._nodes.keys()
         pairs = []
@@ -241,12 +261,14 @@ class Network:
         snrs = []
         for pair in pairs:
             for path in self.find_paths(pair[0], pair[1]):
+                # Generation of the path strings
                 path_string = ''
                 for node in path:
                     path_string += node + '->'
                 paths.append(path_string[:-2])
 
-                # Propagation
+                # Propagation of the signal along all the possible paths
+                # Gets latency, snr and noise power of all the possible paths
                 signal_information = Lightpath(0.001, path, 1)
                 signal_information = self.propagate(signal_information)
                 latencies.append(signal_information.latency)
@@ -260,10 +282,16 @@ class Network:
         df['latency'] = latencies
         df['noise'] = noises
         df['snr'] = snrs
+        # Saves the contend of the data frame in weighted paths
         self.weighted_paths = df
+        # Generates for all the possible paths a list of all the nodes
+        # and a list of all the lines belonging to that path
         self.generate_node_and_line_list()
+        # Generates the route space
         self.update_route_space()
 
+    # Generates for all the possible paths in weighted paths a list of all the nodes
+    # and a list of all the lines belonging to that path
     def generate_node_and_line_list(self):
         for i in range(len(self.weighted_paths['path'])):
             current_path = self.weighted_paths['path'][i]
@@ -279,6 +307,7 @@ class Network:
             self.line_list_dict[i] = line_list
             self.node_list_dict[i] = node_list
 
+    # Draws the topology of the network
     def draw(self):
         nodes = self.nodes
 
@@ -296,6 +325,7 @@ class Network:
         plt.title('Network ')
         plt.show()
 
+    # Finds all the possible paths between two nodes
     def find_paths(self, label1, label2):
         cross_nodes = [key for key in self.nodes.keys()
                        if ((key != label1) & (key != label2))]
@@ -315,6 +345,8 @@ class Network:
                     paths.append(path + label2)
         return paths
 
+    # For each node it finds the connected lines and vice versa
+    # Creates the switching matrix for each node
     def connect(self):
         number_of_channels = 10
         nodes_dict = self.nodes
@@ -335,21 +367,27 @@ class Network:
                             output_connected_node_dict[connected_node2] = np.ones(number_of_channels)
                 node.switching_matrix[connected_node] = output_connected_node_dict
 
+    # Propagates the signal information along the path
     def propagate(self, signal_information):
         path = signal_information.path
         start_node = self.nodes[path[0]]
         propagated_signal_information = start_node.propagate(signal_information)
         return propagated_signal_information
 
+    # Finds the path between two nodes with the best snr
     def find_best_snr(self, node_input, node_output):
         number_of_channels = 10
         best_snr = -math.inf
         best_index = -1
         free_channel_index = -1
+
         for i in range(len(self.weighted_paths['path'])):
             current_path = self.weighted_paths['path'][i]
+            # For each possible path, checks if the input node and the output node corresponds to the right ones
             if (current_path[0] == node_input) and (current_path[-1] == node_output):
                 for channel in range(number_of_channels):
+                    # For each channel of the current path, if a channel is free for all the lines in the current path,
+                    # the best snr and best index are updated if the current snr is better than the old one
                     if self.route_space[current_path][channel] == 1:
                         if self.weighted_paths['snr'][i] > best_snr:
                             best_snr = self.weighted_paths['snr'][i]
@@ -357,6 +395,8 @@ class Network:
                             free_channel_index = channel
                         break
 
+        # If a free channel is found, the state of the lines belonging to the best path is set to 'occupied'
+        # and the route space is updated
         if best_index != -1:
             line_list = self.line_list_dict[best_index]
 
@@ -369,6 +409,7 @@ class Network:
 
         return best_index
 
+    # Finds the path between two nodes with the best latency
     def find_best_latency(self, node_input, node_output):
         number_of_channels = 10
         best_latency = +math.inf
@@ -378,8 +419,11 @@ class Network:
         for i in range(len(self.weighted_paths['path'])):
             current_path = self.weighted_paths['path'][i]
 
+            # For each possible path, checks if the input node and the output node corresponds to the right ones
             if (current_path[0] == node_input) and (current_path[-1] == node_output):
                 for channel in range(number_of_channels):
+                    # For each channel of the current path, if a channel is free for all the lines in the current path,
+                    # the best latency and best index are updated if the current latency is better than the old one
                     if self.route_space[current_path][channel] == 1:
                         if self.weighted_paths['latency'][i] < best_latency:
                             best_latency = self.weighted_paths['latency'][i]
@@ -387,26 +431,33 @@ class Network:
                             free_channel_index = channel
                         break
 
+        # If a free channel is found, the state of the lines belonging to the best path is set to 'occupied'
+        # and the route space is updated
         if best_index != -1:
             line_list = self.line_list_dict[best_index]
 
+            # Updates the state of the lines belonging to the best path
             for line_index in range(len(line_list)):
                 self.lines[line_list[line_index]].state[free_channel_index] = 0
 
+            # Updates the route space
             self.update_route_space()
 
         return best_index
 
+    # Updates the route space
     def update_route_space(self):
         route_space_dict = {}
         number_of_channels = 10
 
         for i in range(len(self.weighted_paths['path'])):
 
-            # Generates the list of the lines in the best path
             line_list = self.line_list_dict[i]
             node_list = self.node_list_dict[i]
 
+            # For each path, for each channel, a blocking event is generated if
+            # 1. one of the switching matrix of the nodes in the path is occupied
+            # 2. one of the lines in the path is occupied
             block = np.ones(number_of_channels)
             for channel in range(number_of_channels):
                 for line in line_list:
@@ -414,39 +465,40 @@ class Network:
                     if block[channel] == 0:
                         break
                 for node_index in range(2, len(node_list)-1):
-                    block[channel] = block[channel] * self.nodes[node_list[node_index]].switching_matrix[node_list[node_index-1]][node_list[node_index+1]][channel]
+                    block[channel] = block[channel] * self.nodes[node_list[node_index]].\
+                        switching_matrix[node_list[node_index-1]][node_list[node_index+1]][channel]
                     if block[channel] == 0:
                         break
             route_space_dict[self.weighted_paths['path'][i]] = block
 
         self._route_space = pd.DataFrame(route_space_dict)
 
-        self._route_space = pd.DataFrame(route_space_dict)
-
-    def stream(self, connection_list, snr_or_latency_choice='latency'):
+    # Generates the connection from the connection list
+    # Finds the path with the best snr/latency
+    def stream(self, connection_list, snr_or_latency='latency'):
         best_path_index_list = []
-        if snr_or_latency_choice == 'snr':
+        if snr_or_latency == 'snr':
             for i in range(len(connection_list)):
                 best_path_index_list.append(Network.find_best_snr(self, connection_list[i].input_node,
                                                                   connection_list[i].output_node))
+                # If the path is found, updates the connection class
                 if best_path_index_list[i] != -1:
                     connection_list[i].latency = self.weighted_paths['latency'][best_path_index_list[i]]
                     connection_list[i].snr = self.weighted_paths['snr'][best_path_index_list[i]]
-#                    print(self.weighted_paths['path'][best_path_index_list[i]])
-
+                # If no path is found, sets latency to 0 and snr to None
                 else:
                     connection_list[i].latency = 0
                     connection_list[i].snr = None
 
-        elif snr_or_latency_choice == 'latency':
+        elif snr_or_latency == 'latency':
             for i in range(len(connection_list)):
                 best_path_index_list.append(Network.find_best_latency(self, connection_list[i].input_node,
                                                                       connection_list[i].output_node))
-
+                # If the path is found, updates the connection class
                 if best_path_index_list[i] > -1:
                     connection_list[i].latency = self.weighted_paths['latency'][best_path_index_list[i]]
                     connection_list[i].snr = self.weighted_paths['snr'][best_path_index_list[i]]
-                    # print(self.weighted_paths['path'][best_path_index_list[i]])
+                # If no path is found, sets latency to 0 and snr to None
                 else:
                     connection_list[i].latency = 0
                     connection_list[i].snr = None
@@ -455,6 +507,8 @@ class Network:
             print('Choice not valid')
 
 
+# Generates the connection between two nodes: contains the input and output nodes, the signal power and the latency/snr
+# of the chosen path
 class Connection:
     def __init__(self, input_node, output_node, signal_power):
         self._input_node = input_node
