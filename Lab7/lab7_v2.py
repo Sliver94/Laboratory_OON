@@ -12,7 +12,7 @@ c_network = 2/3 * c              # Speed of signal on the network
 json_path1 = 'Resources/nodes_full.json'  # Json file address
 json_path2 = 'Resources/nodes_not_full.json'  # Json file address
 snr_or_latency_choice = 'snr'
-number_of_connections = 300
+number_of_connections = 200
 input_signal_power = 0.001
 
 
@@ -188,7 +188,7 @@ class Line:
 
     # Generates the noise of the line
     def noise_generation(self, signal_power):
-        noise = 1e-3 * signal_power * self.length
+        noise = 1e-9 * signal_power * self.length
         return noise
 
     # Propagates the signal information along the line
@@ -290,7 +290,7 @@ class Network:
         return self._switching_matrix_dict
 
     # Initializes the network class
-    def initialize(self):
+    def initialize(self, json_path):
         # Creates a data frame that will be filled with all the possible paths information.
         df = pd.DataFrame()
         node_labels = self._nodes.keys()
@@ -332,14 +332,19 @@ class Network:
         df['snr'] = snrs
         # Saves the contend of the data frame in weighted paths
         self.weighted_paths = df
+
         # Generates for all the possible paths a list of all the nodes
         # and a list of all the lines belonging to that path
         self.generate_node_and_line_list()
-        # Cleans line state and switching matrix of nodes
-        self.clean_line_state()
-        self.clean_node_switching_matrix()
-        # Generates the route space
+
+        # Cleans switching matrix and line state
+        self.clean_after_initialization(json_path)
+
+        # Initialize the route space
         self.update_route_space()
+
+    #        print(self.route_space['C->A->D'])
+    #        print(self.nodes['A'].switching_matrix['C']['D'])
 
     # Generates for all the possible paths in weighted paths a list of all the nodes
     # and a list of all the lines belonging to that path
@@ -358,15 +363,26 @@ class Network:
             self.line_list_dict[i] = line_list
             self.node_list_dict[i] = node_list
 
-    # Cleans the line state
-    def clean_line_state(self):
+    # Cleans the node switching matrix and line states
+    def clean_after_initialization(self, json_path):
+        # Cleans line states
         for line_label in self.lines:
             self.lines[line_label].state[0] = 1
 
-    # Cleans the node switching matrix
-    def clean_node_switching_matrix(self):
+        node_json = json.load(open(json_path, 'r'))
+        for node_label in node_json:
+            # Create the node instance
+            node_dict = node_json[node_label]
+#            node_dict['label'] = node_label
+#            node = Node(node_dict)
+#            self._nodes[node_label] = node
+            self.switching_matrix_dict[node_label] = node_dict['switching_matrix']
+            for connected_node1_label in self.switching_matrix_dict[node_label]:
+                for connected_node2_label in self.switching_matrix_dict[node_label][connected_node1_label]:
+                    self.switching_matrix_dict[node_label][connected_node1_label][connected_node2_label] = \
+                        np.array(self.switching_matrix_dict[node_label][connected_node1_label][connected_node2_label])
+
         nodes_dict = self.nodes
-        lines_dict = self.lines
         for node_label in nodes_dict:
             node = nodes_dict[node_label]
             for connected_node in node.connected_nodes:
@@ -456,16 +472,6 @@ class Network:
                             free_channel_index = channel
                         break
 
-        # If a free channel is found, the state of the lines belonging to the best path is set to 'occupied'
-        # and the route space is updated
-#        if best_index != -1:
-#            line_list = self.line_list_dict[best_index]
-            # Updates the state of the lines belonging to the best path
-#            for line_index in range(len(line_list)):
-#                self.lines[line_list[line_index]].state[free_channel_index] = 0
-            # Updates the route space
-#            self.update_route_space()
-
         find_best_snr_return = [best_index, free_channel_index]
         return find_best_snr_return
 
@@ -522,16 +528,16 @@ class Network:
             for channel in range(number_of_channels):
                 for line in line_list:
                     block[channel] = block[channel] * self.lines[line].state[channel]
-                    if block[channel] == 0:
-                        break
-                for node_index in range(2, len(node_list)-1):
+#                    if block[channel] == 0:
+#                        break
+                for node_index in range(1, len(node_list)-1):
                     block[channel] = block[channel] * self.nodes[node_list[node_index]].\
                         switching_matrix[node_list[node_index-1]][node_list[node_index+1]][channel]
-                    if block[channel] == 0:
-                        break
+#                    if block[channel] == 0:
+#                        break
             route_space_dict[self.weighted_paths['path'][i]] = block
 
-        self._route_space = pd.DataFrame(route_space_dict)
+        self.route_space = pd.DataFrame(route_space_dict)
 
     # Generates the connection from the connection list
     # Finds the path with the best snr/latency
@@ -554,6 +560,7 @@ class Network:
                         deployed_lightpath.signal_power / deployed_lightpath.noise_power)
 
                     self.update_route_space()
+
                 # If no path is found, sets latency to 0 and snr to None
                 else:
                     connection_list[i].latency = 0
@@ -624,7 +631,7 @@ def main():
     network.connect()
 
     # Fills weighted paths and initialize route_space attributes
-    network.initialize()
+    network.initialize(json_path1)
 
     # Input/Output generation
     input_node = []
@@ -650,11 +657,11 @@ def main():
     latency_list = list()
 
     # Result printing
-    print('Best', snr_or_latency_choice, 'case:')
+#    print('Best', snr_or_latency_choice, 'case:')
     for i in range(len(input_node)):
-        print('Connection number:', i)
-        print('Input node =', input_node[i], ', output node =', output_node[i])
-        print('SNR =', connection_list[i].snr, ', Latency =', connection_list[i].latency)
+#        print('Connection number:', i)
+#        print('Input node =', input_node[i], ', output node =', output_node[i])
+#        print('SNR =', connection_list[i].snr, ', Latency =', connection_list[i].latency)
         snr_list.append(connection_list[i].snr)
         latency_list.append(connection_list[i].latency)
 
@@ -674,11 +681,11 @@ def main():
     latency_array = np.array(latency_no_zero)
 
     # Result plotting
-    plt.hist(snr_array, color='blue', edgecolor='black', bins=50)
-    plt.show()
+#    plt.hist(snr_array, color='blue', edgecolor='black', bins=50)
+#    plt.show()
 
-    plt.hist(latency_array, color='blue', edgecolor='black', bins=50)
-    plt.show()
+#    plt.hist(latency_array, color='blue', edgecolor='black', bins=50)
+#    plt.show()
 
     # Initialize an object network of class Network
     network2 = Network(json_path2)
@@ -687,61 +694,61 @@ def main():
     network2.connect()
 
     # Fills weighted paths and initialize route_space attributes
-    network2.initialize()
+    network2.initialize(json_path2)
 
     # Input/Output generation
-    input_node = []
-    output_node = []
-    for i in range(number_of_connections):
-        temp_in = rnd.randint(0, 5)
-        while True:
-            temp_out = rnd.randint(0, 5)
-            if temp_out != temp_in:
-                break
-        number_to_node = ['A', 'B', 'C', 'D', 'E', 'F']
-        input_node.append(number_to_node[temp_in])
-        output_node.append(number_to_node[temp_out])
+#    input_node = []
+#    output_node = []
+#    for i in range(number_of_connections):
+#        temp_in = rnd.randint(0, 5)
+#        while True:
+#            temp_out = rnd.randint(0, 5)
+#            if temp_out != temp_in:
+#                break
+#        number_to_node = ['A', 'B', 'C', 'D', 'E', 'F']
+#        input_node.append(number_to_node[temp_in])
+#        output_node.append(number_to_node[temp_out])
 
     # Connection generation
-    connection_list = []
+    connection_list2 = []
     for i in range(len(input_node)):
-        connection_list.append(Connection(input_node[i], output_node[i], input_signal_power))
+        connection_list2.append(Connection(input_node[i], output_node[i], input_signal_power))
 
     # Stream call
-    network2.stream(connection_list, snr_or_latency_choice)
-    snr_list = list()
-    latency_list = list()
+    network2.stream(connection_list2, snr_or_latency_choice)
+    snr_list2 = list()
+    latency_list2 = list()
 
     # Result printing
-    print('Best', snr_or_latency_choice, 'case:')
+#    print('Best', snr_or_latency_choice, 'case:')
     for i in range(len(input_node)):
-        print('Connection number:', i)
-        print('Input node =', input_node[i], ', output node =', output_node[i])
-        print('SNR =', connection_list[i].snr, ', Latency =', connection_list[i].latency)
-        snr_list.append(connection_list[i].snr)
-        latency_list.append(connection_list[i].latency)
+#        print('Connection number:', i)
+#        print('Input node =', input_node[i], ', output node =', output_node[i])
+#        print('SNR =', connection_list2[i].snr, ', Latency =', connection_list2[i].latency)
+        snr_list2.append(connection_list2[i].snr)
+        latency_list2.append(connection_list2[i].latency)
 
     number_of_blocks_not_full = 0
-    snr_list_no_none = []
-    latency_no_zero = []
-    for index in range(len(snr_list)):
-        if snr_list[index] is not None:
-            snr_list_no_none.append(snr_list[index])
+    snr_list_no_none2 = []
+    latency_no_zero2 = []
+    for index in range(len(snr_list2)):
+        if snr_list2[index] is not None:
+            snr_list_no_none2.append(snr_list2[index])
         else:
             number_of_blocks_not_full = number_of_blocks_not_full + 1
-        if latency_list[index] != 0:
-            latency_no_zero.append(latency_list[index])
+        if latency_list2[index] != 0:
+            latency_no_zero2.append(latency_list2[index])
 
     # Conversion to array for plotting
-    snr_array = np.array(snr_list_no_none)
-    latency_array = np.array(latency_no_zero)
+    snr_array2 = np.array(snr_list_no_none2)
+    latency_array2 = np.array(latency_no_zero2)
 
     # Result plotting
-    plt.hist(snr_array, color='blue', edgecolor='black', bins=50)
-    plt.show()
+#    plt.hist(snr_array2, color='blue', edgecolor='black', bins=50)
+#    plt.show()
 
-    plt.hist(latency_array, color='blue', edgecolor='black', bins=50)
-    plt.show()
+#    plt.hist(latency_array2, color='blue', edgecolor='black', bins=50)
+#    plt.show()
 
     print('Blocking events for full switching matrix = ', number_of_blocks_full)
     print('Blocking events for not full switching matrix = ', number_of_blocks_not_full)
