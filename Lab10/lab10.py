@@ -9,30 +9,34 @@ from scipy import special
 # global variables
 c = 3 * (10 ** 8)                # Speed of light
 c_network = 2/3 * c              # Speed of signal on the network
+
 json_path1 = 'Resources/nodes_full_fixed_rate.json'  # Json file address
 json_path2 = 'Resources/nodes_full_flex_rate.json'  # Json file address
 json_path3 = 'Resources/nodes_full_shannon.json'  # Json file address
+
 snr_or_latency_choice = 'snr'
+
 number_of_connections = 200
+
 input_signal_power = 0.001
+
 number_of_channels = 10
 gain = 16  # dB
 noise_figure = 3  # dB
 gain_linear = 10 ** (gain / 10)  # Linear
 noise_figure_linear = 10 ** (noise_figure / 10)  # Linear
-h = 6.62607015 * (10 ** (-34))  # Plack constant
-f = 193.414 * (10 ** 12)  # C-band center frequency
+h = 6.62607015e-34  # Plack constant  J * s
+f = 193.414e12  # C-band center frequency
 alpha = 0.2  # dB/km
-alpha_linear = alpha / (10 * math.log10(math.e))
 beta2 = 2.13e-26  # (m Hz^2)^-1
-gamma = 1.27  # (m W)^-1
+gamma = 1.27e-3  # (m W)^-1
 # f_max = 191.2e12
 # f_min = 195.6e12
 # df = (f_max - f_min) / number_of_channels
 df = 50e9
-Rs = 32000000
-Bn = 12500000
-BERt = 10 ** (-3)
+Rs = 32e9
+Bn = 12.5e9
+BERt = 10e-3
 
 
 # Models the lightpath physical parameters: contains signal power, signal path, noise power,
@@ -52,6 +56,10 @@ class Lightpath:
     @property
     def signal_power(self):
         return self._signal_power
+
+    @signal_power.setter
+    def signal_power(self, signal_power):
+        self._signal_power = signal_power
 
     @property
     def path(self):
@@ -178,6 +186,7 @@ class Node:
             line = self.successive[line_label]
             signal_information.previous_node = path[0]
             signal_information.next()
+            signal_information.signal_power = line.optimized_launch_power()
             signal_information = line.propagate(signal_information)
         return signal_information
 
@@ -196,7 +205,7 @@ class Line:
         self._noise_figure = noise_figure
         self._noise_figure_linear = 10 ** (self._noise_figure / 10)  # Linear
         self._alpha = line_dict['alpha']
-        self._alpha_linear = self._alpha / (10 * math.log10(math.e))
+        self._alpha_linear = (self._alpha / (20 * math.log10(math.e))) / 1000
         self._beta2 = beta2
         self._gamma = gamma
 
@@ -274,7 +283,7 @@ class Line:
 
     # Generates the noise of the line
     def noise_generation(self, signal_power):
-        noise = 1e-9 * signal_power * self.length
+        noise = self.nli_generation(signal_power) + self.ase_generation()
         return noise
 
     # Generates the ase noise of the line
@@ -285,12 +294,21 @@ class Line:
     # Generates the non linear noise of the line
     def nli_generation(self, signal_power):
         eta_nli = 16 / (27 * math.pi) * \
-                  math.log(((math.e ** 2) / 2) * ((self.beta2 * (Rs ** 2)) / self.alpha_linear) *
+                  math.log(((math.pi ** 2) / 2) * ((self.beta2 * (Rs ** 2)) / self.alpha_linear) *
                            (number_of_channels ** ((2 * Rs) / df)), math.e) * \
                   ((self.gamma ** 2) / (4 * self._alpha_linear * self.beta2 * (Rs ** 3)))
         n_span = self.n_amplifiers - 1
         nli = (signal_power ** 3) * eta_nli * n_span * Bn
         return nli
+
+    # Calculates the optimal launch power
+    def optimized_launch_power(self):
+        eta_nli = 16 / (27 * math.pi) * \
+                  math.log(((math.pi ** 2) / 2) * ((self.beta2 * (Rs ** 2)) / self.alpha_linear) *
+                           (number_of_channels ** ((2 * Rs) / df)), math.e) * \
+                  ((self.gamma ** 2) / (4 * self._alpha_linear * self.beta2 * (Rs ** 3)))
+        p_opt = (self.ase_generation() / (2 * eta_nli * Bn)) ** (1. / 3.)
+        return p_opt
 
     # Propagates the signal information along the line
     def propagate(self, signal_information):
@@ -695,7 +713,8 @@ class Network:
     def calculate_bit_rate(self, path, strategy):
 
         Rb = 0
-        gsnr = self.weighted_paths['snr'][path]
+        gsnrdB = self.weighted_paths['snr'][path]
+        gsnr = 10 ** (gsnrdB / 10)
         if strategy == 'fixed_rate':
             if gsnr >= 2*(special.erfinv(2*BERt)**2)*(Rs/Bn):
                 Rb = 100
@@ -709,7 +728,7 @@ class Network:
             else:
                 Rb = 400
         elif strategy == 'shannon':
-            Rb = (2 * Rs * math.log2(1 + gsnr * (Bn / Rs))) * (10 ** (-6))
+            Rb = (2 * Rs * math.log2(1 + gsnr * (Bn / Rs))) * (10 ** (-9))
         else:
             print('Strategy non valid')
             exit()
