@@ -661,23 +661,27 @@ class Network:
                 # Bit-rate check
                 if best_path_index_list[i] != -1:
                     first_node = self.path_list[best_path_index_list[i]][0]
-                    bit_rate = self.calculate_bit_rate(best_path_index_list[i], self.nodes[first_node].transceiver)
-                    if bit_rate == 0:
-                        best_path_index_list[i] = -1
+#                    bit_rate = self.calculate_bit_rate(best_path_index_list[i], self.nodes[first_node].transceiver)
+#                    if bit_rate == 0:
+#                        best_path_index_list[i] = -1
 
                 # If the path is found, updates the connection class
-                if best_path_index_list[i] != -1:
+#                if best_path_index_list[i] != -1:
                     deployed_lightpath = Lightpath(input_signal_power,
                                                    self.path_list[best_path_index_list[i]], free_channel)
 
-                    deployed_lightpath = self.propagate(deployed_lightpath)
+                    bit_rate = self.calculate_bit_rate(deployed_lightpath, self.nodes[first_node].transceiver)
 
-                    connection_list[i].bit_rate = bit_rate
-                    connection_list[i].latency = deployed_lightpath.latency
-                    connection_list[i].snr = 10 * np.log10(
-                        deployed_lightpath.signal_power / deployed_lightpath.noise_power)
+                    if bit_rate != 0:
 
-                    self.update_route_space()
+                        deployed_lightpath = self.propagate(deployed_lightpath)
+
+                        connection_list[i].bit_rate = bit_rate
+                        connection_list[i].latency = deployed_lightpath.latency
+                        connection_list[i].snr = 10 * np.log10(
+                            deployed_lightpath.signal_power / deployed_lightpath.noise_power)
+
+                        self.update_route_space()
 
                 # If no path is found, sets latency to 0 and snr to None
                 else:
@@ -710,10 +714,23 @@ class Network:
             print('Choice not valid')
 
     # Calculates the bit rate of the path based on the strategy choice
-    def calculate_bit_rate(self, path, strategy):
+    def calculate_bit_rate(self, lightpath_class, strategy):
 
         Rb = 0
-        gsnrdB = self.weighted_paths['snr'][path]
+        path_arrow = ''
+        for i in range(len(lightpath_class.path)):
+            if i != len(lightpath_class.path) - 1:
+                path_arrow += lightpath_class.path[i] + '->'
+            else:
+                path_arrow += lightpath_class.path[i]
+
+        path_index = -1
+        for i in range(len(self.weighted_paths['path'])):
+            if self.weighted_paths['path'][i] == path_arrow:
+                path_index = i
+                break
+
+        gsnrdB = self.weighted_paths['snr'][path_index]
 
         gsnr = 10 ** (gsnrdB / 10)
         if strategy == 'fixed_rate':
