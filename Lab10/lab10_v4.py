@@ -16,7 +16,7 @@ json_path3 = 'Resources/nodes_full_shannon.json'  # Json file address
 
 snr_or_latency_choice = 'snr'
 
-number_of_connections = 200
+number_of_connections = 100
 
 input_signal_power = 0.001
 
@@ -39,6 +39,7 @@ Bn = 12.5e9
 BERt = 10e-3
 
 M = 1
+
 
 # Models the lightpath physical parameters: contains signal power, signal path, noise power,
 # lightpath latency and the selected channel
@@ -346,13 +347,13 @@ class Line:
 
     # Cleans the line status when bit rate condition is not satisfied
     def clean_propagate(self, signal_information):
-
         # Update line occupancy
         self.state[signal_information.channel] = 1
 
         node = self.successive[signal_information.path[0]]
         signal_information = node.clean_propagate(signal_information)
         return signal_information
+
 
 # Models the the network: contains the route space, the list of all the paths with the related snr/latency
 # (in weighted paths), the nodes and the lines of the network and the list of nodes and lines belonging to
@@ -610,7 +611,6 @@ class Network:
         propagated_signal_information = start_node.clean_propagate(signal_information)
         return
 
-
     # Finds the path between two nodes with the best snr
     def find_best_snr(self, node_input, node_output):
         best_snr = -math.inf
@@ -777,13 +777,14 @@ class Network:
 # Generates the connection between two nodes: contains the input and output nodes, the signal power and the latency/snr
 # of the chosen path
 class Connection:
-    def __init__(self, input_node, output_node, signal_power):
+    def __init__(self, input_node, output_node, signal_power, traffic_matrix_index):
         self._input_node = input_node
         self._output_node = output_node
         self._signal_power = signal_power
         self._latency = 0.0
         self._snr = 0.0
         self._bit_rate = 0
+        self._traffic_matrix_index = traffic_matrix_index
 
     @property
     def input_node(self):
@@ -821,6 +822,14 @@ class Connection:
     def bit_rate(self, bit_rate):
         self._bit_rate = bit_rate
 
+    @property
+    def traffic_matrix_index(self):
+        return self._traffic_matrix_index
+
+    @traffic_matrix_index.setter
+    def traffic_matrix_index(self, traffic_matrix_index):
+        self._traffic_matrix_index = traffic_matrix_index
+
 
 def main():
     # Initialize an object network of class Network
@@ -847,20 +856,47 @@ def main():
 
     traffic_matrix = generate_traffic_matrix(input_node, output_node, M)
 
-    # Connection generation
-    connection_list = []
-    for i in range(0, traffic_matrix.shape[0]):
-        for j in range(0, traffic_matrix.shape[1]):
-            connection_list.append(Connection(input_node[i], output_node[i], input_signal_power))
+    node_list = ['A', 'B', 'C', 'D', 'E', 'F']
 
-    # Stream call
-    network.stream(connection_list, snr_or_latency_choice)
+    # Connection generation
+    continue_streaming = True
+    connection_list = []
+    while continue_streaming:
+        for i in range(0, traffic_matrix.shape[0]):
+            for j in range(0, traffic_matrix.shape[1]):
+                requested_bit_rate = traffic_matrix[i][j]
+                traffic_matrix_index = [i, j]
+                if requested_bit_rate != 0:
+                    connection_list.append(Connection(node_list[i], node_list[j], input_signal_power,
+                                                      traffic_matrix_index))
+
+        # Stream call
+        network.stream(connection_list, snr_or_latency_choice)
+
+        no_element_changed = True
+        traffic_matrix_is_zero = True
+
+        for i in range(0, traffic_matrix.shape[0]):
+            for j in range(0, traffic_matrix.shape[1]):
+                for k in range(len(connection_list)):
+                    if [i, j] == connection_list[k].traffic_matrix_index:
+                        traffic_matrix[i, j] = traffic_matrix[i, j] - connection_list[k].bit_rate
+                        if traffic_matrix[i, j] < 0:
+                            traffic_matrix[i, j] = 0
+                        if connection_list[k].bit_rate != 0:
+                            no_element_changed = False
+                if traffic_matrix[i, j] != 0:
+                    traffic_matrix_is_zero = False
+
+        if no_element_changed or traffic_matrix_is_zero:
+            continue_streaming = False
+
     snr_list = list()
     latency_list = list()
     bit_rate_list = list()
 
     # Result printing
-    for i in range(len(input_node)):
+    for i in range(len(connection_list)):
         snr_list.append(connection_list[i].snr)
         latency_list.append(connection_list[i].latency)
         bit_rate_list.append(connection_list[i].bit_rate)
@@ -895,19 +931,47 @@ def main():
     # Fills weighted paths and initialize route_space attributes
     network2.initialize(json_path2)
 
-    # Connection generation
-    connection_list2 = []
-    for i in range(len(input_node)):
-        connection_list2.append(Connection(input_node[i], output_node[i], input_signal_power))
+    traffic_matrix2 = generate_traffic_matrix(input_node, output_node, M)
 
-    # Stream call
-    network2.stream(connection_list2, snr_or_latency_choice)
+    # Connection generation
+    continue_streaming = True
+    connection_list2 = []
+    while continue_streaming:
+        for i in range(0, traffic_matrix2.shape[0]):
+            for j in range(0, traffic_matrix2.shape[1]):
+                requested_bit_rate = traffic_matrix2[i][j]
+                traffic_matrix_index = [i, j]
+                if requested_bit_rate != 0:
+                    connection_list2.append(Connection(node_list[i], node_list[j], input_signal_power,
+                                                       traffic_matrix_index))
+
+        # Stream call
+        network2.stream(connection_list2, snr_or_latency_choice)
+
+        no_element_changed = True
+        traffic_matrix_is_zero = True
+
+        for i in range(0, traffic_matrix2.shape[0]):
+            for j in range(0, traffic_matrix2.shape[1]):
+                for k in range(len(connection_list2)):
+                    if [i, j] == connection_list2[k].traffic_matrix_index:
+                        traffic_matrix2[i, j] = traffic_matrix2[i, j] - connection_list2[k].bit_rate
+                        if traffic_matrix2[i, j] < 0:
+                            traffic_matrix2[i, j] = 0
+                        if connection_list2[k].bit_rate != 0:
+                            no_element_changed = False
+                if traffic_matrix2[i, j] != 0:
+                    traffic_matrix_is_zero = False
+
+        if no_element_changed or traffic_matrix_is_zero:
+            continue_streaming = False
+
     snr_list2 = list()
     latency_list2 = list()
     bit_rate_list2 = list()
 
     # Result printing
-    for i in range(len(input_node)):
+    for i in range(len(connection_list2)):
         snr_list2.append(connection_list2[i].snr)
         latency_list2.append(connection_list2[i].latency)
         bit_rate_list2.append(connection_list2[i].bit_rate)
@@ -943,19 +1007,47 @@ def main():
     # Fills weighted paths and initialize route_space attributes
     network3.initialize(json_path3)
 
-    # Connection generation
-    connection_list3 = []
-    for i in range(len(input_node)):
-        connection_list3.append(Connection(input_node[i], output_node[i], input_signal_power))
+    traffic_matrix3 = generate_traffic_matrix(input_node, output_node, M)
 
-    # Stream call
-    network3.stream(connection_list3, snr_or_latency_choice)
+    # Connection generation
+    continue_streaming = True
+    connection_list3 = []
+    while continue_streaming:
+        for i in range(0, traffic_matrix3.shape[0]):
+            for j in range(0, traffic_matrix3.shape[1]):
+                requested_bit_rate = traffic_matrix3[i][j]
+                traffic_matrix_index = [i, j]
+                if requested_bit_rate != 0:
+                    connection_list3.append(Connection(node_list[i], node_list[j], input_signal_power,
+                                                       traffic_matrix_index))
+
+        # Stream call
+        network3.stream(connection_list3, snr_or_latency_choice)
+
+        no_element_changed = True
+        traffic_matrix_is_zero = True
+
+        for i in range(0, traffic_matrix3.shape[0]):
+            for j in range(0, traffic_matrix3.shape[1]):
+                for k in range(len(connection_list3)):
+                    if [i, j] == connection_list3[k].traffic_matrix_index:
+                        traffic_matrix3[i, j] = traffic_matrix3[i, j] - connection_list3[k].bit_rate
+                        if traffic_matrix3[i, j] < 0:
+                            traffic_matrix3[i, j] = 0
+                        if connection_list3[k].bit_rate != 0:
+                            no_element_changed = False
+                if traffic_matrix3[i, j] != 0:
+                    traffic_matrix_is_zero = False
+
+        if no_element_changed or traffic_matrix_is_zero:
+            continue_streaming = False
+
     snr_list3 = list()
     latency_list3 = list()
     bit_rate_list3 = list()
 
     # Result printing
-    for i in range(len(input_node)):
+    for i in range(len(connection_list3)):
         snr_list3.append(connection_list3[i].snr)
         latency_list3.append(connection_list3[i].latency)
         bit_rate_list3.append(connection_list3[i].bit_rate)
@@ -964,6 +1056,7 @@ def main():
     snr_list_no_none3 = []
     latency_no_zero3 = []
     bit_rate_no_zero3 = []
+
     for index in range(len(snr_list3)):
         if snr_list3[index] is not None:
             snr_list_no_none3.append(snr_list3[index])
@@ -998,32 +1091,29 @@ def main():
     print('Capacity for full shannon = ', capacity3, 'Gbps')
 
     # Result plotting
+    plt.hist(snr_array, color='blue', edgecolor='black', bins=50)
+    plt.show()
+    plt.hist(latency_array, color='blue', edgecolor='black', bins=50)
+    plt.show()
+    plt.hist(bit_rate_array, color='blue', edgecolor='black', bins=50)
+    plt.show()
 
+    plt.hist(snr_array2, color='blue', edgecolor='black', bins=50)
+    plt.show()
+    plt.hist(latency_array2, color='blue', edgecolor='black', bins=50)
+    plt.show()
+    plt.hist(bit_rate_array2, color='blue', edgecolor='black', bins=50)
+    plt.show()
 
-#    plt.hist(snr_array, color='blue', edgecolor='black', bins=50)
-#    plt.show()
-#    plt.hist(latency_array, color='blue', edgecolor='black', bins=50)
-#    plt.show()
-#    plt.hist(bit_rate_array, color='blue', edgecolor='black', bins=50)
-#    plt.show()
-
-#    plt.hist(snr_array2, color='blue', edgecolor='black', bins=50)
-#    plt.show()
-#    plt.hist(latency_array2, color='blue', edgecolor='black', bins=50)
-#    plt.show()
-#    plt.hist(bit_rate_array2, color='blue', edgecolor='black', bins=50)
-#    plt.show()
-
-#    plt.hist(snr_array3, color='blue', edgecolor='black', bins=50)
-#    plt.show()
-#    plt.hist(latency_array3, color='blue', edgecolor='black', bins=50)
-#    plt.show()
-#    plt.hist(bit_rate_array3, color='blue', edgecolor='black', bins=50)
-#    plt.show()
+    plt.hist(snr_array3, color='blue', edgecolor='black', bins=50)
+    plt.show()
+    plt.hist(latency_array3, color='blue', edgecolor='black', bins=50)
+    plt.show()
+    plt.hist(bit_rate_array3, color='blue', edgecolor='black', bins=50)
+    plt.show()
 
 
 def generate_traffic_matrix(input_node, output_node, M):
-
     traffic_matrix = np.zeros(shape=(6, 6))
     node_list = ['A', 'B', 'C', 'D', 'E', 'F']
 
@@ -1042,7 +1132,8 @@ def generate_traffic_matrix(input_node, output_node, M):
                 output_node_index[i] = j
 
     for i in range(len(input_node)):
-        traffic_matrix[input_node_index[i]][output_node_index[i]] = traffic_matrix[input_node_index[i]][output_node_index[i]] + 100 * M
+        traffic_matrix[input_node_index[i]][output_node_index[i]] = traffic_matrix[input_node_index[i]][
+                                                                        output_node_index[i]] + 100 * M
 
     return traffic_matrix
 
