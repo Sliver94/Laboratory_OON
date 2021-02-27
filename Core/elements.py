@@ -21,6 +21,7 @@ from Core.utils import alpha
 from Core.science_utils import linear_to_db_conversion
 from Core.science_utils import alpha_conversion
 from Core.science_utils import db_to_linear_conversion
+from Core.science_utils import eta_nli_generator
 
 from Core.science_utils import fixed_rate_condition
 from Core.science_utils import flex_rate_condition
@@ -48,6 +49,10 @@ class Lightpath:
     @property
     def signal_power(self):
         return self._signal_power
+
+    @signal_power.setter
+    def signal_power(self, signal_power):
+        self._signal_power = signal_power
 
     @property
     def path(self):
@@ -174,7 +179,23 @@ class Node:
             line = self.successive[line_label]
             signal_information.previous_node = path[0]
             signal_information.next()
+            signal_information.signal_power = line.optimized_launch_power()
             signal_information = line.propagate(signal_information)
+        return signal_information
+
+    # Cleans the switching matrix adjacent channels when bit rate condition is not satisfied
+    def clean_propagate(self, signal_information):
+        path = signal_information.path
+        if len(path) > 1:
+            if signal_information.starting_node != path[0]:
+                if signal_information.channel != number_of_channels - 1:
+                    self.switching_matrix[signal_information.previous_node][path[1]][signal_information.channel + 1] = 1
+
+            line_label = path[:2]
+            line = self.successive[line_label]
+            signal_information.previous_node = path[0]
+            signal_information.next()
+            signal_information = line.clean_propagate(signal_information)
         return signal_information
 
 
@@ -270,7 +291,7 @@ class Line:
 
     # Generates the noise of the line
     def noise_generation(self, signal_power):
-        noise = 1e-9 * signal_power * self.length
+        noise = self.nli_generation(signal_power) + self.ase_generation()
         return noise
 
     # Generates the ase noise of the line
@@ -280,13 +301,16 @@ class Line:
 
     # Generates the non linear noise of the line
     def nli_generation(self, signal_power):
-        eta_nli = 16 / (27 * math.pi) * \
-                  math.log(((math.e ** 2) / 2) * ((self.beta2 * (Rs ** 2)) / self.alpha_linear) *
-                           (number_of_channels ** ((2 * Rs) / df)), math.e) * \
-                  ((self.gamma ** 2) / (4 * self._alpha_linear * self.beta2 * (Rs ** 3)))
+        eta_nli = eta_nli_generator()
         n_span = self.n_amplifiers - 1
-        nli = (signal_power ** 3) * eta_nli * n_span
+        nli = (signal_power ** 3) * eta_nli * n_span * Bn
         return nli
+
+    # Calculates the optimal launch power
+    def optimized_launch_power(self):
+        eta_nli = eta_nli_generator()
+        p_opt = (self.ase_generation() / (2 * eta_nli * Bn)) ** (1. / 3.)
+        return p_opt
 
     # Propagates the signal information along the line
     def propagate(self, signal_information):
@@ -304,6 +328,15 @@ class Line:
 
         node = self.successive[signal_information.path[0]]
         signal_information = node.propagate(signal_information)
+        return signal_information
+
+    # Cleans the line status when bit rate condition is not satisfied
+    def clean_propagate(self, signal_information):
+        # Update line occupancy
+        self.state[signal_information.channel] = 1
+
+        node = self.successive[signal_information.path[0]]
+        signal_information = node.clean_propagate(signal_information)
         return signal_information
 
 
@@ -406,6 +439,7 @@ class Network:
         latencies = []
         noises = []
         snrs = []
+        transceivers = []
         for pair in pairs:
             for path in self.find_paths(pair[0], pair[1]):
                 # Generation of the path strings
@@ -418,6 +452,7 @@ class Network:
                 # Propagation of the signal along all the possible paths
                 # Gets latency, snr and noise power of all the possible paths
                 signal_information = Lightpath(input_signal_power, path, 0)
+                transceivers.append(self.nodes[signal_information.path[0]].transceiver)
                 signal_information = self.propagate(signal_information)
                 latencies.append(signal_information.latency)
                 noises.append(signal_information.noise_power)
@@ -431,6 +466,8 @@ class Network:
         df['latency'] = latencies
         df['noise'] = noises
         df['snr'] = snrs
+        df['transceiver'] = transceivers
+
         # Saves the contend of the data frame in weighted paths
         self.weighted_paths = df
 
@@ -443,9 +480,6 @@ class Network:
 
         # Initialize the route space
         self.update_route_space()
-
-    #        print(self.route_space['C->A->D'])
-    #        print(self.nodes['A'].switching_matrix['C']['D'])
 
     # Generates for all the possible paths in weighted paths a list of all the nodes
     # and a list of all the lines belonging to that path
@@ -474,9 +508,6 @@ class Network:
         for node_label in node_json:
             # Create the node instance
             node_dict = node_json[node_label]
-            #            node_dict['label'] = node_label
-            #            node = Node(node_dict)
-            #            self._nodes[node_label] = node
             self.switching_matrix_dict[node_label] = node_dict['switching_matrix']
             for connected_node1_label in self.switching_matrix_dict[node_label]:
                 for connected_node2_label in self.switching_matrix_dict[node_label][connected_node1_label]:
@@ -505,7 +536,7 @@ class Network:
                 x1 = n1.position[0]
                 y1 = n1.position[1]
                 plt.plot([x0, x1], [y0, y1], 'b')
-        plt.title('Network ')
+        plt.title('Network')
         plt.savefig(root / 'Results/Lab3/Network_draw.png')
         plt.show()
 
@@ -551,6 +582,13 @@ class Network:
         start_node = self.nodes[path[0]]
         propagated_signal_information = start_node.propagate(signal_information)
         return propagated_signal_information
+
+    # Cleans the path when bitrate condition is not satisfied
+    def clean_propagate(self, signal_information):
+        path = signal_information.path
+        start_node = self.nodes[path[0]]
+        propagated_signal_information = start_node.clean_propagate(signal_information)
+        return
 
     # Finds the path between two nodes with the best snr
     def find_best_snr(self, node_input, node_output):
@@ -615,13 +653,9 @@ class Network:
             for channel in range(number_of_channels):
                 for line in line_list:
                     block[channel] = block[channel] * self.lines[line].state[channel]
-                #                    if block[channel] == 0:
-                #                        break
                 for node_index in range(1, len(node_list) - 1):
                     block[channel] = block[channel] * self.nodes[node_list[node_index]]. \
                         switching_matrix[node_list[node_index - 1]][node_list[node_index + 1]][channel]
-            #                    if block[channel] == 0:
-            #                        break
             route_space_dict[self.weighted_paths['path'][i]] = block
 
         self.route_space = pd.DataFrame(route_space_dict)
@@ -636,28 +670,25 @@ class Network:
                                                              connection_list[i].output_node)
                 best_path_index_list.append(find_best_snr_output[0])
                 free_channel = find_best_snr_output[1]
-                bit_rate = 0
 
                 # Bit-rate check
                 if best_path_index_list[i] != -1:
                     first_node = self.path_list[best_path_index_list[i]][0]
-                    bit_rate = self.calculate_bit_rate(best_path_index_list[i], self.nodes[first_node].transceiver)
-                    if bit_rate == 0:
-                        best_path_index_list[i] = -1
 
-                # If the path is found, updates the connection class
-                if best_path_index_list[i] != -1:
                     deployed_lightpath = Lightpath(input_signal_power,
                                                    self.path_list[best_path_index_list[i]], free_channel)
-
                     deployed_lightpath = self.propagate(deployed_lightpath)
+                    bit_rate = self.calculate_bit_rate(deployed_lightpath, self.nodes[first_node].transceiver)
 
-                    connection_list[i].bit_rate = bit_rate
-                    connection_list[i].latency = deployed_lightpath.latency
-                    connection_list[i].snr = linear_to_db_conversion(
-                        deployed_lightpath.signal_power / deployed_lightpath.noise_power)
+                    if bit_rate == 0:
+                        self.clean_propagate(deployed_lightpath)
+                    else:
+                        connection_list[i].bit_rate = bit_rate
+                        connection_list[i].latency = deployed_lightpath.latency
+                        connection_list[i].snr = linear_to_db_conversion(
+                            deployed_lightpath.signal_power / deployed_lightpath.noise_power)
 
-                    self.update_route_space()
+                        self.update_route_space()
 
                 # If no path is found, sets latency to 0 and snr to None
                 else:
@@ -690,10 +721,11 @@ class Network:
             print('Choice not valid')
 
     # Calculates the bit rate of the path based on the strategy choice
-    def calculate_bit_rate(self, path, strategy):
+    def calculate_bit_rate(self, lightpath_class, strategy):
 
+        gsnr = lightpath_class.signal_power / lightpath_class.noise_power
         Rb = 0
-        gsnr = self.weighted_paths['snr'][path]
+
         if strategy == 'fixed_rate':
             Rb = fixed_rate_condition(gsnr)
         elif strategy == 'flex_rate':
