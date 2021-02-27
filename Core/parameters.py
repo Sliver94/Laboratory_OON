@@ -1,3 +1,5 @@
+# Generates the connection between two nodes: contains the input and output nodes, the signal power and the latency/snr
+# of the chosen path
 class Connection:
     def __init__(self, input_node, output_node, signal_power):
         self._input_node = input_node

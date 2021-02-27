@@ -46,7 +46,6 @@ def main():
     snr_list = list()
     latency_list = list()
 
-    # Results printing
     print('Best', snr_or_latency_choice, 'case:')
     for i in range(len(input_node)):
         print('Connection number:', i)
@@ -55,7 +54,6 @@ def main():
         snr_list.append(connection_list[i].snr)
         latency_list.append(connection_list[i].latency)
 
-    # Removes "None" and "0"
     snr_list_no_none = []
     latency_no_zero = []
     for index in range(len(snr_list)):
@@ -68,11 +66,13 @@ def main():
     latency_array = np.array(latency_no_zero)
 
     plt.hist(snr_array, color='blue', edgecolor='black', bins=50)
-    plt.savefig(root / 'Results/Lab5/snr_distribution_find_best_snr')
+    plt.savefig(root / 'Results/Lab6/snr_distribution_find_best_snr')
+#    plt.savefig(root / 'Results/Lab6/snr_distribution_find_best_latency')
     plt.show()
 
     plt.hist(latency_array, color='blue', edgecolor='black', bins=50)
-    plt.savefig(root / 'Results/Lab5/latency_distribution_find_best_snr')
+    plt.savefig(root / 'Results/Lab6/latency_distribution_find_best_snr')
+#    plt.savefig(root / 'Results/Lab6/latency_distribution_find_best_latency')
     plt.show()
 
 
