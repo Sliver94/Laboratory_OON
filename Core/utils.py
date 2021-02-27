@@ -7,8 +7,15 @@ snr_or_latency_choice = 'snr'
 # snr_or_latency_choice = 'latency'
 number_of_connections = 100
 input_signal_power = 0.001
-
+number_of_channels = 10
+gain = 16  # dB
+noise_figure = 3  # dB
+h = 6.62607015 * (10 ** (-34))  # Plack constant
+f = 193.414 * (10 ** 12)  # C-band center frequency
+alpha = 0.2  # dB/km
+beta2 = 2.13e-26  # ps^2/km
+gamma = 1.27  # 1/Wm
+df = 50e9
 Rs = 32000000
 Bn = 12500000
 BERt = 10 ** (-3)
-

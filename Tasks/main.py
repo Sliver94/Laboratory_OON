@@ -17,6 +17,7 @@ root = Path(__file__).parent.parent
 
 
 def main():
+
     # Initialize an object network of class Network
     network = Network(root / json_path1)
 
@@ -174,7 +175,7 @@ def main():
     print('Blocking events for full flex rate = ', number_of_blocks_full_flex)
     print('Blocking events for full shannon = ', number_of_blocks_full_shannon)
 
-    file = open(root / 'Results/Lab8/bit_rates_and_capacities.txt', "a")
+    file = open(root / 'Results/Lab9/bit_rates_and_capacities.txt', "a")
 
     bit_rate_mean = np.mean(bit_rate_array)
     bit_rate_mean2 = np.mean(bit_rate_array2)
@@ -200,33 +201,33 @@ def main():
     # Result plotting
 
     plt.hist(snr_array, color='blue', edgecolor='black', bins=50)
-    plt.savefig(root / 'Results/Lab8/snr_distribution_fixed.png')
+    plt.savefig(root / 'Results/Lab9/snr_distribution_fixed.png')
     plt.show()
     plt.hist(latency_array, color='blue', edgecolor='black', bins=50)
-    plt.savefig(root / 'Results/Lab8/latency_distribution_fixed.png')
+    plt.savefig(root / 'Results/Lab9/latency_distribution_fixed.png')
     plt.show()
     plt.hist(bit_rate_array, color='blue', edgecolor='black', bins=50)
-    plt.savefig(root / 'Results/Lab8/bit_rate_distribution_fixed.png')
+    plt.savefig(root / 'Results/Lab9/bit_rate_distribution_fixed.png')
     plt.show()
 
     plt.hist(snr_array2, color='blue', edgecolor='black', bins=50)
-    plt.savefig(root / 'Results/Lab8/snr_distribution_flex.png')
+    plt.savefig(root / 'Results/Lab9/snr_distribution_flex.png')
     plt.show()
     plt.hist(latency_array2, color='blue', edgecolor='black', bins=50)
-    plt.savefig(root / 'Results/Lab8/latency_distribution_flex.png')
+    plt.savefig(root / 'Results/Lab9/latency_distribution_flex.png')
     plt.show()
     plt.hist(bit_rate_array2, color='blue', edgecolor='black', bins=50)
-    plt.savefig(root / 'Results/Lab8/bit_rate_distribution_flex.png')
+    plt.savefig(root / 'Results/Lab9/bit_rate_distribution_flex.png')
     plt.show()
 
     plt.hist(snr_array3, color='blue', edgecolor='black', bins=50)
-    plt.savefig(root / 'Results/Lab8/snr_distribution_shannon.png')
+    plt.savefig(root / 'Results/Lab9/snr_distribution_shannon.png')
     plt.show()
     plt.hist(latency_array3, color='blue', edgecolor='black', bins=50)
-    plt.savefig(root / 'Results/Lab8/latency_distribution_shannon.png')
+    plt.savefig(root / 'Results/Lab9/latency_distribution_shannon.png')
     plt.show()
     plt.hist(bit_rate_array3, color='blue', edgecolor='black', bins=50)
-    plt.savefig(root / 'Results/Lab8/bit_rate_distribution_shannon.png')
+    plt.savefig(root / 'Results/Lab9/bit_rate_distribution_shannon.png')
     plt.show()
 
 

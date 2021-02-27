@@ -9,6 +9,14 @@ def linear_to_db_conversion(x):
     return 10 * np.log10(x)
 
 
+def alpha_conversion(x):
+    return x / (10 * np.log10(math.e))
+
+
+def db_to_linear_conversion(x):
+    return 10 ** (x/10)
+
+
 def fixed_rate_condition(x):
     if x >= 2 * (2 * BERt) * (Rs / Bn):
         return 100

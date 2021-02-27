@@ -6,7 +6,22 @@ import math
 
 from Core.utils import c_network
 from Core.utils import input_signal_power
+from Core.utils import df
+from Core.utils import Rs
+from Core.utils import number_of_channels
+from Core.utils import gain
+from Core.utils import noise_figure
+from Core.utils import beta2
+from Core.utils import gamma
+from Core.utils import h
+from Core.utils import f
+from Core.utils import Bn
+from Core.utils import alpha
+
 from Core.science_utils import linear_to_db_conversion
+from Core.science_utils import alpha_conversion
+from Core.science_utils import db_to_linear_conversion
+
 from Core.science_utils import fixed_rate_condition
 from Core.science_utils import flex_rate_condition
 from Core.science_utils import shannon
@@ -27,6 +42,8 @@ class Lightpath:
         self._channel = channel
         self._starting_node = path[0]
         self._previous_node = path[0]
+        self._df = df
+        self._Rs = Rs
 
     @property
     def signal_power(self):
@@ -45,8 +62,8 @@ class Lightpath:
         return self._noise_power
 
     @noise_power.setter
-    def noise_power(self, noise):
-        self._noise_power = noise
+    def noise_power(self, noise_power):
+        self._noise_power = noise_power
 
     @property
     def latency(self):
@@ -71,6 +88,14 @@ class Lightpath:
     @previous_node.setter
     def previous_node(self, previous_node):
         self._previous_node = previous_node
+
+    @property
+    def df(self):
+        return self._df
+
+    @property
+    def Rs(self):
+        return self._Rs
 
     # Updates noise power
     def add_noise(self, noise):
@@ -134,7 +159,6 @@ class Node:
 
     # Propagates the signal information along the node
     def propagate(self, signal_information):
-        number_of_channels = 10
         path = signal_information.path
         if len(path) > 1:
             if signal_information.starting_node != path[0]:
@@ -158,11 +182,20 @@ class Node:
 # state of the channels of the line
 class Line:
     def __init__(self, line_dict):
-        number_of_channels = 10
         self._label = line_dict['label']
         self._length = line_dict['length']
         self._successive = {}
         self._state = list()
+        self._n_amplifiers = line_dict['n_amplifiers']
+        self._gain = gain
+        self._gain_linear = db_to_linear_conversion(self._gain)  # Linear
+        self._noise_figure = noise_figure
+        self._noise_figure_linear = db_to_linear_conversion(self._noise_figure)  # Linear
+        self._alpha = line_dict['alpha']
+        self._alpha_linear = alpha_conversion(self._alpha)
+        self._beta2 = beta2
+        self._gamma = gamma
+
         for i in range(number_of_channels):
             self._state.append(1)
 
@@ -190,6 +223,46 @@ class Line:
     def state(self, state):
         self._state = state
 
+    @property
+    def n_amplifiers(self):
+        return self._n_amplifiers
+
+    @n_amplifiers.setter
+    def n_amplifiers(self, n_amplifiers):
+        self._n_amplifiers = n_amplifiers
+
+    @property
+    def gain(self):
+        return self._gain
+
+    @property
+    def gain_linear(self):
+        return self._gain_linear
+
+    @property
+    def noise_figure(self):
+        return self._noise_figure
+
+    @property
+    def noise_figure_linear(self):
+        return self._noise_figure_linear
+
+    @property
+    def alpha(self):
+        return self._alpha
+
+    @property
+    def alpha_linear(self):
+        return self._alpha_linear
+
+    @property
+    def beta2(self):
+        return self._beta2
+
+    @property
+    def gamma(self):
+        return self._gamma
+
     # Generates the latency of the line
     def latency_generation(self):
         latency = self.length / c_network
@@ -199,6 +272,21 @@ class Line:
     def noise_generation(self, signal_power):
         noise = 1e-9 * signal_power * self.length
         return noise
+
+    # Generates the ase noise of the line
+    def ase_generation(self):
+        ase = self.n_amplifiers * h * f * Bn * self.noise_figure_linear * (self.gain_linear - 1)
+        return ase
+
+    # Generates the non linear noise of the line
+    def nli_generation(self, signal_power):
+        eta_nli = 16 / (27 * math.pi) * \
+                  math.log(((math.e ** 2) / 2) * ((self.beta2 * (Rs ** 2)) / self.alpha_linear) *
+                           (number_of_channels ** ((2 * Rs) / df)), math.e) * \
+                  ((self.gamma ** 2) / (4 * self._alpha_linear * self.beta2 * (Rs ** 3)))
+        n_span = self.n_amplifiers - 1
+        nli = (signal_power ** 3) * eta_nli * n_span
+        return nli
 
     # Propagates the signal information along the line
     def propagate(self, signal_information):
@@ -256,6 +344,9 @@ class Network:
                 node_position = np.array(node_json[node_label]['position'])
                 connected_node_position = np.array(node_json[connected_node_label]['position'])
                 line_dict['length'] = np.sqrt(np.sum((node_position - connected_node_position) ** 2))
+                line_dict['n_amplifiers'] = math.ceil(
+                    line_dict['length'] / 80000) + 1  # booster, pre-amplifier and in-line amplifiers
+                line_dict['alpha'] = alpha
                 line = Line(line_dict)
                 self._lines[line_label] = line
 
@@ -415,6 +506,7 @@ class Network:
                 y1 = n1.position[1]
                 plt.plot([x0, x1], [y0, y1], 'b')
         plt.title('Network ')
+        plt.savefig(root / 'Results/Lab3/Network_draw.png')
         plt.show()
 
     # Finds all the possible paths between two nodes
@@ -462,7 +554,6 @@ class Network:
 
     # Finds the path between two nodes with the best snr
     def find_best_snr(self, node_input, node_output):
-        number_of_channels = 10
         best_snr = -math.inf
         best_index = -1
         free_channel_index = -1
@@ -486,7 +577,6 @@ class Network:
 
     # Finds the path between two nodes with the best latency
     def find_best_latency(self, node_input, node_output):
-        number_of_channels = 10
         best_latency = +math.inf
         best_index = -1
         free_channel_index = -1
@@ -512,7 +602,6 @@ class Network:
     # Updates the route space
     def update_route_space(self):
         route_space_dict = {}
-        number_of_channels = 10
 
         for i in range(len(self.weighted_paths['path'])):
 
