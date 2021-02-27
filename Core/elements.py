@@ -7,8 +7,12 @@ import math
 from Core.utils import c_network
 from Core.utils import input_signal_power
 from Core.science_utils import linear_to_db_conversion
+from Core.science_utils import fixed_rate_condition
+from Core.science_utils import flex_rate_condition
+from Core.science_utils import shannon
 
 from pathlib import Path
+
 root = Path(__file__).parent.parent
 
 
@@ -90,6 +94,7 @@ class Node:
         self._connected_nodes = node_dict['connected_nodes']
         self._successive = {}
         self._switching_matrix = {}
+        self._transceiver = 'fixed-rate'
 
     @property
     def label(self):
@@ -119,14 +124,22 @@ class Node:
     def switching_matrix(self, switching_matrix):
         self._switching_matrix = switching_matrix
 
+    @property
+    def transceiver(self):
+        return self._transceiver
+
+    @transceiver.setter
+    def transceiver(self, transceiver):
+        self._transceiver = transceiver
+
     # Propagates the signal information along the node
     def propagate(self, signal_information):
         number_of_channels = 10
         path = signal_information.path
         if len(path) > 1:
             if signal_information.starting_node != path[0]:
-                if signal_information.channel == number_of_channels-1:
-                    self.switching_matrix[signal_information.previous_node][path[1]][signal_information.channel-1] = 0
+                if signal_information.channel == number_of_channels - 1:
+                    self.switching_matrix[signal_information.previous_node][path[1]][signal_information.channel - 1] = 0
                 elif signal_information.channel == 0:
                     self.switching_matrix[signal_information.previous_node][path[1]][signal_information.channel + 1] = 0
                 else:
@@ -233,6 +246,7 @@ class Network:
                 for connected_node2_label in self.switching_matrix_dict[node_label][connected_node1_label]:
                     self.switching_matrix_dict[node_label][connected_node1_label][connected_node2_label] = \
                         np.array(self.switching_matrix_dict[node_label][connected_node1_label][connected_node2_label])
+            self.nodes[node_label].transceiver = node_json[node_label]['transceiver']
 
             # Create the line instances
             for connected_node_label in node_dict['connected_nodes']:
@@ -241,7 +255,7 @@ class Network:
                 line_dict['label'] = line_label
                 node_position = np.array(node_json[node_label]['position'])
                 connected_node_position = np.array(node_json[connected_node_label]['position'])
-                line_dict['length'] = np.sqrt(np.sum((node_position-connected_node_position)**2))
+                line_dict['length'] = np.sqrt(np.sum((node_position - connected_node_position) ** 2))
                 line = Line(line_dict)
                 self._lines[line_label] = line
 
@@ -369,9 +383,9 @@ class Network:
         for node_label in node_json:
             # Create the node instance
             node_dict = node_json[node_label]
-#            node_dict['label'] = node_label
-#            node = Node(node_dict)
-#            self._nodes[node_label] = node
+            #            node_dict['label'] = node_label
+            #            node = Node(node_dict)
+            #            self._nodes[node_label] = node
             self.switching_matrix_dict[node_label] = node_dict['switching_matrix']
             for connected_node1_label in self.switching_matrix_dict[node_label]:
                 for connected_node2_label in self.switching_matrix_dict[node_label][connected_node1_label]:
@@ -400,8 +414,7 @@ class Network:
                 x1 = n1.position[0]
                 y1 = n1.position[1]
                 plt.plot([x0, x1], [y0, y1], 'b')
-        plt.title('Network')
-        plt.savefig(root / 'Results/Lab3/Network_draw.png')
+        plt.title('Network ')
         plt.show()
 
     # Finds all the possible paths between two nodes
@@ -410,15 +423,15 @@ class Network:
                        if ((key != label1) & (key != label2))]
         cross_lines = self.lines.keys()
         inner_paths = {'0': label1}
-        for i in range(len(cross_nodes)+1):
-            inner_paths[str(i+1)] = []
+        for i in range(len(cross_nodes) + 1):
+            inner_paths[str(i + 1)] = []
             for inner_path in inner_paths[str(i)]:
-                inner_paths[str(i+1)] += [inner_path + cross_node
-                                          for cross_node in cross_nodes
-                                          if ((inner_path[-1] + cross_node in cross_lines) &
-                                              (cross_node not in inner_path))]
+                inner_paths[str(i + 1)] += [inner_path + cross_node
+                                            for cross_node in cross_nodes
+                                            if ((inner_path[-1] + cross_node in cross_lines) &
+                                                (cross_node not in inner_path))]
         paths = []
-        for i in range(len(cross_nodes)+1):
+        for i in range(len(cross_nodes) + 1):
             for path in inner_paths[str(i)]:
                 if path[-1] + label2 in cross_lines:
                     paths.append(path + label2)
@@ -493,19 +506,8 @@ class Network:
                             free_channel_index = channel
                         break
 
-        # If a free channel is found, the state of the lines belonging to the best path is set to 'occupied'
-        # and the route space is updated
-        if best_index != -1:
-            line_list = self.line_list_dict[best_index]
-
-            # Updates the state of the lines belonging to the best path
-            for line_index in range(len(line_list)):
-                self.lines[line_list[line_index]].state[free_channel_index] = 0
-
-            # Updates the route space
-            self.update_route_space()
-
-        return best_index
+        find_best_snr_return = [best_index, free_channel_index]
+        return find_best_snr_return
 
     # Updates the route space
     def update_route_space(self):
@@ -524,13 +526,13 @@ class Network:
             for channel in range(number_of_channels):
                 for line in line_list:
                     block[channel] = block[channel] * self.lines[line].state[channel]
-#                    if block[channel] == 0:
-#                        break
-                for node_index in range(1, len(node_list)-1):
-                    block[channel] = block[channel] * self.nodes[node_list[node_index]].\
-                        switching_matrix[node_list[node_index-1]][node_list[node_index+1]][channel]
-#                    if block[channel] == 0:
-#                        break
+                #                    if block[channel] == 0:
+                #                        break
+                for node_index in range(1, len(node_list) - 1):
+                    block[channel] = block[channel] * self.nodes[node_list[node_index]]. \
+                        switching_matrix[node_list[node_index - 1]][node_list[node_index + 1]][channel]
+            #                    if block[channel] == 0:
+            #                        break
             route_space_dict[self.weighted_paths['path'][i]] = block
 
         self.route_space = pd.DataFrame(route_space_dict)
@@ -545,14 +547,25 @@ class Network:
                                                              connection_list[i].output_node)
                 best_path_index_list.append(find_best_snr_output[0])
                 free_channel = find_best_snr_output[1]
+                bit_rate = 0
+
+                # Bit-rate check
+                if best_path_index_list[i] != -1:
+                    first_node = self.path_list[best_path_index_list[i]][0]
+                    bit_rate = self.calculate_bit_rate(best_path_index_list[i], self.nodes[first_node].transceiver)
+                    if bit_rate == 0:
+                        best_path_index_list[i] = -1
+
                 # If the path is found, updates the connection class
                 if best_path_index_list[i] != -1:
                     deployed_lightpath = Lightpath(input_signal_power,
                                                    self.path_list[best_path_index_list[i]], free_channel)
 
                     deployed_lightpath = self.propagate(deployed_lightpath)
+
+                    connection_list[i].bit_rate = bit_rate
                     connection_list[i].latency = deployed_lightpath.latency
-                    connection_list[i].snr = 10 * np.log10(
+                    connection_list[i].snr = linear_to_db_conversion(
                         deployed_lightpath.signal_power / deployed_lightpath.noise_power)
 
                     self.update_route_space()
@@ -564,12 +577,21 @@ class Network:
 
         elif snr_or_latency == 'latency':
             for i in range(len(connection_list)):
-                best_path_index_list.append(Network.find_best_latency(self, connection_list[i].input_node,
-                                                                      connection_list[i].output_node))
+                find_best_latency_output = Network.find_best_latency(self, connection_list[i].input_node,
+                                                                     connection_list[i].output_node)
+                best_path_index_list.append(find_best_latency_output[0])
+                free_channel = find_best_latency_output[1]
                 # If the path is found, updates the connection class
-                if best_path_index_list[i] > -1:
-                    connection_list[i].latency = self.weighted_paths['latency'][best_path_index_list[i]]
-                    connection_list[i].snr = self.weighted_paths['snr'][best_path_index_list[i]]
+                if best_path_index_list[i] != -1:
+                    deployed_lightpath = Lightpath(input_signal_power,
+                                                   self.path_list[best_path_index_list[i]], free_channel)
+                    deployed_lightpath = self.propagate(deployed_lightpath)
+                    connection_list[i].latency = deployed_lightpath.latency
+                    connection_list[i].snr = linear_to_db_conversion(
+                        deployed_lightpath.signal_power / deployed_lightpath.noise_power)
+
+                    self.update_route_space()
+
                 # If no path is found, sets latency to 0 and snr to None
                 else:
                     connection_list[i].latency = 0
@@ -577,3 +599,20 @@ class Network:
 
         else:
             print('Choice not valid')
+
+    # Calculates the bit rate of the path based on the strategy choice
+    def calculate_bit_rate(self, path, strategy):
+
+        Rb = 0
+        gsnr = self.weighted_paths['snr'][path]
+        if strategy == 'fixed_rate':
+            Rb = fixed_rate_condition(gsnr)
+        elif strategy == 'flex_rate':
+            Rb = flex_rate_condition(gsnr)
+        elif strategy == 'shannon':
+            Rb = shannon(gsnr)
+        else:
+            print('Strategy non valid')
+            exit()
+
+        return Rb
