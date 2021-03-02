@@ -3,7 +3,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from Core.elements import Network
-from Core.science_utils import generate_traffic_matrix
 from Core.utils import json_path1
 from Core.utils import json_path2
 from Core.utils import json_path3
@@ -43,7 +42,7 @@ def main():
             input_node.append(number_to_node[temp_in])
             output_node.append(number_to_node[temp_out])
 
-        traffic_matrix = generate_traffic_matrix(input_node, output_node, M)
+        traffic_matrix = network.generate_traffic_matrix(input_node, output_node, M)
         node_list = ['A', 'B', 'C', 'D', 'E', 'F']
 
         # writes the input traffic matrix to the output file
@@ -139,7 +138,7 @@ def main():
         # Fills weighted paths and initialize route_space attributes
         network2.initialize(root / json_path2)
 
-        traffic_matrix2 = generate_traffic_matrix(input_node, output_node, M)
+        traffic_matrix2 = network2.generate_traffic_matrix(input_node, output_node, M)
 
         # writes the input traffic matrix to the output file
         traffic_matrix_mat2 = np.asmatrix(traffic_matrix2)
@@ -235,7 +234,7 @@ def main():
         # Fills weighted paths and initialize route_space attributes
         network3.initialize(root / json_path3)
 
-        traffic_matrix3 = generate_traffic_matrix(input_node, output_node, M)
+        traffic_matrix3 = network3.generate_traffic_matrix(input_node, output_node, M)
 
         # writes the input traffic matrix to the output file
         traffic_matrix_mat3 = np.asmatrix(traffic_matrix3)

@@ -737,3 +737,26 @@ class Network:
             exit()
 
         return Rb
+
+    def generate_traffic_matrix(self, input_node, output_node, M):
+        traffic_matrix = np.zeros(shape=(6, 6))
+        node_list = ['A', 'B', 'C', 'D', 'E', 'F']
+
+        input_node_index = list()
+        output_node_index = list()
+
+        for i in range(len(input_node)):
+            input_node_index.append(input_node[i])
+            output_node_index.append(output_node[i])
+
+        for i in range(len(input_node_index)):
+            for j in range(len(node_list)):
+                if input_node_index[i] == node_list[j]:
+                    input_node_index[i] = j
+                if output_node_index[i] == node_list[j]:
+                    output_node_index[i] = j
+
+        for i in range(len(input_node)):
+            traffic_matrix[input_node_index[i]][output_node_index[i]] = traffic_matrix[input_node_index[i]][
+                                                                            output_node_index[i]] + 100 * M
+        return traffic_matrix
