@@ -1,9 +1,0 @@
-M = 3
-
-Bit rate mean for full fixed rate = 100.0 Gbps
-Bit rate mean for full flex rate = 400.0 Gbps
-Bit rate mean for full shannon = 440.661405275313 Gbps
-
-Capacity for full fixed rate = 14900 Gbps
-Capacity for full flex rate = 34400 Gbps
-Capacity for full shannon = 35252.91242202504 Gbps

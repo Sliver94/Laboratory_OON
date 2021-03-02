@@ -17,7 +17,6 @@ root = Path(__file__).parent.parent
 
 
 def main():
-
     for M in range(1, 8):
 
         # Initialize an object network of class Network
@@ -47,7 +46,7 @@ def main():
 
         # writes the input traffic matrix to the output file
         traffic_matrix_mat = np.asmatrix(traffic_matrix)
-        traffic_matrix_1_path = 'Results/Lab10/traffic_matrix_fixed_M_'+str(M)+'.txt'
+        traffic_matrix_1_path = 'Results/Lab10/traffic_matrix_fixed_M_' + str(M) + '.txt'
         with open(root / traffic_matrix_1_path, "w") as out_file_1:
             for line in traffic_matrix_mat:
                 np.savetxt(out_file_1, line, fmt='%.2f')
@@ -142,7 +141,7 @@ def main():
 
         # writes the input traffic matrix to the output file
         traffic_matrix_mat2 = np.asmatrix(traffic_matrix2)
-        traffic_matrix_2_path = 'Results/Lab10/traffic_matrix_flex_M_'+str(M)+'.txt'
+        traffic_matrix_2_path = 'Results/Lab10/traffic_matrix_flex_M_' + str(M) + '.txt'
         with open(root / traffic_matrix_2_path, "w") as out_file_2:
             for line in traffic_matrix_mat2:
                 np.savetxt(out_file_2, line, fmt='%.2f')
@@ -238,7 +237,7 @@ def main():
 
         # writes the input traffic matrix to the output file
         traffic_matrix_mat3 = np.asmatrix(traffic_matrix3)
-        traffic_matrix_3_path = 'Results/Lab10/traffic_matrix_shannon_M_'+str(M)+'.txt'
+        traffic_matrix_3_path = 'Results/Lab10/traffic_matrix_shannon_M_' + str(M) + '.txt'
         with open(root / traffic_matrix_3_path, "w") as out_file_3:
             for line in traffic_matrix_mat3:
                 np.savetxt(out_file_3, line, fmt='%.2f')
@@ -319,32 +318,40 @@ def main():
         latency_array3 = np.array(latency_no_zero3)
         bit_rate_array3 = np.array(bit_rate_no_zero3)
 
-        print('Blocking events for full fixed rate = ', number_of_blocks_full_fixed)
-        print('Blocking events for full flex rate = ', number_of_blocks_full_flex)
-        print('Blocking events for full shannon = ', number_of_blocks_full_shannon)
-
-        file_path = 'Results/Lab10/bit_rates_and_capacities_M_' + str(M) + '.txt'
+        file_path = 'Results/Lab10/bit_rates_capacities_and_blocking_events_M_' + str(M) + '.txt'
         file = open(root / file_path, "w")
+
         file.write('M = ' + str(M) + '\n\n')
+
+        file.write('- Blocking events:\n')
+        print('Blocking events for full fixed rate = ', number_of_blocks_full_fixed)
+        file.write('\tBlocking events (Fixed-Rate) = ' + str(number_of_blocks_full_fixed) + '\n')
+        print('Blocking events for full flex rate = ', number_of_blocks_full_flex)
+        file.write('\tBlocking events (Flex-Rate) = ' + str(number_of_blocks_full_flex) + '\n')
+        print('Blocking events for full shannon = ', number_of_blocks_full_shannon)
+        file.write('\tBlocking events (Shannon) = ' + str(number_of_blocks_full_shannon) + '\n\n')
+
+        file.write('- Bit Rate mean:\n')
         bit_rate_mean = np.mean(bit_rate_array)
         bit_rate_mean2 = np.mean(bit_rate_array2)
         bit_rate_mean3 = np.mean(bit_rate_array3)
         print('Bit rate mean for full fixed rate = ', bit_rate_mean, 'Gbps')
-        file.write('Bit rate mean for full fixed rate = ' + str(bit_rate_mean) + ' Gbps\n')
+        file.write('\tBit rate mean for full fixed rate = ' + str(bit_rate_mean) + ' Gbps\n')
         print('Bit rate mean for full flex rate = ', bit_rate_mean2, 'Gbps')
-        file.write('Bit rate mean for full flex rate = ' + str(bit_rate_mean2) + ' Gbps\n')
+        file.write('\tBit rate mean for full flex rate = ' + str(bit_rate_mean2) + ' Gbps\n')
         print('Bit rate mean for full shannon = ', bit_rate_mean3, 'Gbps')
-        file.write('Bit rate mean for full shannon = ' + str(bit_rate_mean3) + ' Gbps\n\n')
+        file.write('\tBit rate mean for full shannon = ' + str(bit_rate_mean3) + ' Gbps\n\n')
 
+        file.write('- Capacities:\n')
         capacity = np.sum(bit_rate_array)
         capacity2 = np.sum(bit_rate_array2)
         capacity3 = np.sum(bit_rate_array3)
         print('Capacity for full fixed rate = ', capacity, 'Gbps')
-        file.write('Capacity for full fixed rate = ' + str(capacity) + ' Gbps\n')
+        file.write('\tCapacity for full fixed rate = ' + str(capacity) + ' Gbps\n')
         print('Capacity mean for full flex rate = ', capacity2, 'Gbps')
-        file.write('Capacity for full flex rate = ' + str(capacity2) + ' Gbps\n')
+        file.write('\tCapacity for full flex rate = ' + str(capacity2) + ' Gbps\n')
         print('Capacity mean for full shannon = ', capacity3, 'Gbps')
-        file.write('Capacity for full shannon = ' + str(capacity3) + ' Gbps\n')
+        file.write('\tCapacity for full shannon = ' + str(capacity3) + ' Gbps\n')
         file.close()
 
         # Result plotting
@@ -353,12 +360,21 @@ def main():
         fig_path2 = 'Results/Lab10/latency_distribution_fixed_M_' + str(M) + '.png'
         fig_path3 = 'Results/Lab10/bit_rate_distribution_fixed_M_' + str(M) + '.png'
         plt.hist(snr_array, color='blue', edgecolor='black', bins=50)
+        plt.xlabel('SNR [dB]')
+        plt.ylabel('Frequency')
+        plt.title('SNR Distribution (Fixed-Rate, M = ' + str(M) + ')')
         plt.savefig(root / fig_path1)
         plt.show()
-        plt.hist(latency_array, color='blue', edgecolor='black', bins=50)
+        plt.hist(latency_array * 1e3, color='red', edgecolor='black', bins=50)
+        plt.xlabel('Latency [ms]')
+        plt.ylabel('Frequency')
+        plt.title('Latency Distribution (Fixed-Rate, M = ' + str(M) + ')')
         plt.savefig(root / fig_path2)
         plt.show()
-        plt.hist(bit_rate_array, color='blue', edgecolor='black', bins=50)
+        plt.hist(bit_rate_array, color='green', edgecolor='black', bins=50)
+        plt.xlabel('Bit Rate [Gbps]')
+        plt.ylabel('Frequency')
+        plt.title('Bit Rate Distribution (Fixed-Rate, M = ' + str(M) + ')')
         plt.savefig(root / fig_path3)
         plt.show()
 
@@ -366,12 +382,21 @@ def main():
         fig_path5 = 'Results/Lab10/latency_distribution_flex_M_' + str(M) + '.png'
         fig_path6 = 'Results/Lab10/bit_rate_distribution_flex_M_' + str(M) + '.png'
         plt.hist(snr_array2, color='blue', edgecolor='black', bins=50)
+        plt.xlabel('SNR [dB]')
+        plt.ylabel('Frequency')
+        plt.title('SNR Distribution (Flex-Rate, M = ' + str(M) + ')')
         plt.savefig(root / fig_path4)
         plt.show()
-        plt.hist(latency_array2, color='blue', edgecolor='black', bins=50)
+        plt.hist(latency_array2 * 1e3, color='red', edgecolor='black', bins=50)
+        plt.xlabel('Latency [ms]')
+        plt.ylabel('Frequency')
+        plt.title('Latency Distribution (Flex-Rate, M = ' + str(M) + ')')
         plt.savefig(root / fig_path5)
         plt.show()
-        plt.hist(bit_rate_array2, color='blue', edgecolor='black', bins=50)
+        plt.hist(bit_rate_array2, color='green', edgecolor='black', bins=50)
+        plt.xlabel('Bit Rate [Gbps]')
+        plt.ylabel('Frequency')
+        plt.title('Bit Rate Distribution (Flex-Rate, M = ' + str(M) + ')')
         plt.savefig(root / fig_path6)
         plt.show()
 
@@ -379,12 +404,21 @@ def main():
         fig_path8 = 'Results/Lab10/latency_distribution_shannon_M_' + str(M) + '.png'
         fig_path9 = 'Results/Lab10/bit_rate_distribution_shannon_M_' + str(M) + '.png'
         plt.hist(snr_array3, color='blue', edgecolor='black', bins=50)
+        plt.xlabel('SNR [dB]')
+        plt.ylabel('Frequency')
+        plt.title('SNR Distribution (Shannon, M = ' + str(M) + ')')
         plt.savefig(root / fig_path7)
         plt.show()
-        plt.hist(latency_array3, color='blue', edgecolor='black', bins=50)
+        plt.hist(latency_array3 * 1e3, color='red', edgecolor='black', bins=50)
+        plt.xlabel('Latency [ms]')
+        plt.ylabel('Frequency')
+        plt.title('Latency Distribution (Shannon, M = ' + str(M) + ')')
         plt.savefig(root / fig_path8)
         plt.show()
-        plt.hist(bit_rate_array3, color='blue', edgecolor='black', bins=50)
+        plt.hist(bit_rate_array3, color='green', edgecolor='black', bins=50)
+        plt.xlabel('Bit Rate [Gbps]')
+        plt.ylabel('Frequency')
+        plt.title('Bit Rate Distribution (Shannon, M = ' + str(M) + ')')
         plt.savefig(root / fig_path9)
         plt.show()
 
