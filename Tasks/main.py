@@ -69,10 +69,16 @@ def main():
 
     # Result plotting
     plt.hist(snr_array, color='blue', edgecolor='black', bins=50)
+    plt.xlabel('SNR [dB]')
+    plt.ylabel('Frequency')
+    plt.title('SNR Distribution (Full Switching Matrices)')
     plt.savefig(root / 'Results/Lab7/snr_distribution_full_sw_mx.png')
     plt.show()
 
-    plt.hist(latency_array, color='blue', edgecolor='black', bins=50)
+    plt.hist(latency_array*1e3, color='red', edgecolor='black', bins=50)
+    plt.xlabel('Latency [ms]')
+    plt.ylabel('Frequency')
+    plt.title('Latency Distribution (Full Switching Matrices)')
     plt.savefig(root / 'Results/Lab7/latency_distribution_full_sw_mx.png')
     plt.show()
 
@@ -117,10 +123,16 @@ def main():
 
     # Result plotting
     plt.hist(snr_array2, color='blue', edgecolor='black', bins=50)
+    plt.xlabel('SNR [dB]')
+    plt.ylabel('Frequency')
+    plt.title('SNR Distribution (Not Full Switching Matrices)')
     plt.savefig(root / 'Results/Lab7/snr_distribution_not_full_sw_mx.png')
     plt.show()
 
-    plt.hist(latency_array2, color='blue', edgecolor='black', bins=50)
+    plt.hist(latency_array2*1e3, color='red', edgecolor='black', bins=50)
+    plt.xlabel('Latency [ms]')
+    plt.ylabel('Frequency')
+    plt.title('Latency Distribution (Not Full Switching Matrices)')
     plt.savefig(root / 'Results/Lab7/latency_distribution_not_full_sw_mx.png')
     plt.show()
 
