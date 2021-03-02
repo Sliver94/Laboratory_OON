@@ -25,18 +25,18 @@ def db_to_linear_conversion(x):
 
 
 def fixed_rate_condition(x):
-    if x >= 2 * (special.erfinv(2 * BERt) ** 2) * (Rs / Bn):
+    if x >= 2 * (special.erfcinv(2 * BERt) ** 2) * (Rs / Bn):
         return 100
     else:
         return 0
 
 
 def flex_rate_condition(x):
-    if x < 2 * (special.erfinv(2 * BERt) ** 2) * (Rs / Bn):
+    if x < 2 * (special.erfcinv(2 * BERt) ** 2) * (Rs / Bn):
         return 0
-    elif x < (14 / 3) * (special.erfinv((3 / 2) * BERt) ** 2) * (Rs / Bn):
+    elif x < (14 / 3) * (special.erfcinv((3 / 2) * BERt) ** 2) * (Rs / Bn):
         return 100
-    elif x < 10 * (special.erfinv((8 / 3) * BERt) ** 2) * (Rs / Bn):
+    elif x < 10 * (special.erfcinv((8 / 3) * BERt) ** 2) * (Rs / Bn):
         return 200
     else:
         return 400
