@@ -8,6 +8,8 @@ from Core.utils import json_path2
 from Core.utils import json_path3
 from Core.utils import number_of_connections
 from Core.utils import snr_or_latency_choice
+from Core.utils import print_input_matrix
+from Core.utils import print_output_matrix
 
 from pathlib import Path
 
@@ -20,7 +22,7 @@ def main():
         # Initialize an object network of class Network
         network = Network(root / json_path1)
 
-        # Fills "successive" attributes of Nodes and Ligines
+        # Fills "successive" attributes of Nodes and Lines
         network.connect()
 
         # Fills weighted paths and initialize route_space attributes
@@ -44,13 +46,8 @@ def main():
 
         # writes the input traffic matrix to the output file
         traffic_matrix_mat = np.asmatrix(traffic_matrix)
-        traffic_matrix_1_path = 'Results/Lab10/traffic_matrix_fixed_M_' + str(M) + '.txt'
-        with open(root / traffic_matrix_1_path, "w") as out_file_1:
-            for line in traffic_matrix_mat:
-                np.savetxt(out_file_1, line, fmt='%.2f')
-        file = open(root / traffic_matrix_1_path, "a")
-        file.write('\n')
-        file.close()
+        input_traffic_matrix_1_path = 'Results/Lab10/input_traffic_matrix_fixed_M_' + str(M) + '.png'
+        print_input_matrix(traffic_matrix_mat, node_list, root, input_traffic_matrix_1_path)
 
         # Connection generation
         connections_management_output = network.connections_management(traffic_matrix, node_list, snr_or_latency_choice)
@@ -60,9 +57,8 @@ def main():
         # writes the output matrix to the output file
         traffic_matrix_mat = np.asmatrix(traffic_matrix)
         traffic_matrix_mat = network.handle_output_traffix_matrix(traffic_matrix_mat)
-        with open(root / traffic_matrix_1_path, "a") as out_file_1:
-            for line in traffic_matrix_mat:
-                np.savetxt(out_file_1, line, fmt='%.2f')
+        output_traffic_matrix_1_path = 'Results/Lab10/output_traffic_matrix_fixed_M_' + str(M) + '.png'
+        print_output_matrix(traffic_matrix_mat, node_list, root, output_traffic_matrix_1_path)
 
         snr_list = list()
         latency_list = list()
@@ -108,13 +104,8 @@ def main():
 
         # writes the input traffic matrix to the output file
         traffic_matrix_mat2 = np.asmatrix(traffic_matrix2)
-        traffic_matrix_2_path = 'Results/Lab10/traffic_matrix_flex_M_' + str(M) + '.txt'
-        with open(root / traffic_matrix_2_path, "w") as out_file_2:
-            for line in traffic_matrix_mat2:
-                np.savetxt(out_file_2, line, fmt='%.2f')
-        file = open(root / traffic_matrix_2_path, "a")
-        file.write('\n')
-        file.close()
+        input_traffic_matrix_2_path = 'Results/Lab10/input_traffic_matrix_flex_M_' + str(M) + '.png'
+        print_input_matrix(traffic_matrix_mat2, node_list, root, input_traffic_matrix_2_path)
 
         # Connection generation
         connections_management_output2 = network2.connections_management(traffic_matrix2, node_list, snr_or_latency_choice)
@@ -124,9 +115,8 @@ def main():
         # writes the output matrix to the output file
         traffic_matrix_mat2 = np.asmatrix(traffic_matrix2)
         traffic_matrix_mat2 = network2.handle_output_traffix_matrix(traffic_matrix_mat2)
-        with open(root / traffic_matrix_2_path, "a") as out_file_2:
-            for line in traffic_matrix_mat2:
-                np.savetxt(out_file_2, line, fmt='%.2f')
+        output_traffic_matrix_2_path = 'Results/Lab10/output_traffic_matrix_flex_M_' + str(M) + '.png'
+        print_output_matrix(traffic_matrix_mat2, node_list, root, output_traffic_matrix_2_path)
 
         snr_list2 = list()
         latency_list2 = list()
@@ -173,13 +163,8 @@ def main():
 
         # writes the input traffic matrix to the output file
         traffic_matrix_mat3 = np.asmatrix(traffic_matrix3)
-        traffic_matrix_3_path = 'Results/Lab10/traffic_matrix_shannon_M_' + str(M) + '.txt'
-        with open(root / traffic_matrix_3_path, "w") as out_file_3:
-            for line in traffic_matrix_mat3:
-                np.savetxt(out_file_3, line, fmt='%.2f')
-        file = open(root / traffic_matrix_3_path, "a")
-        file.write('\n')
-        file.close()
+        input_traffic_matrix_3_path = 'Results/Lab10/input_traffic_matrix_shannon_M_' + str(M) + '.png'
+        print_input_matrix(traffic_matrix_mat3, node_list, root, input_traffic_matrix_3_path)
 
         # Connection generation
         connections_management_output3 = network3.connections_management(traffic_matrix3, node_list, snr_or_latency_choice)
@@ -189,9 +174,8 @@ def main():
         # writes the output matrix to the output file
         traffic_matrix_mat3 = np.asmatrix(traffic_matrix3)
         traffic_matrix_mat3 = network3.handle_output_traffix_matrix(traffic_matrix_mat3)
-        with open(root / traffic_matrix_3_path, "a") as out_file_3:
-            for line in traffic_matrix_mat3:
-                np.savetxt(out_file_3, line, fmt='%.2f')
+        output_traffic_matrix_3_path = 'Results/Lab10/output_traffic_matrix_shannon_M_' + str(M) + '.png'
+        print_output_matrix(traffic_matrix_mat3, node_list, root, output_traffic_matrix_3_path)
 
         snr_list3 = list()
         latency_list3 = list()
