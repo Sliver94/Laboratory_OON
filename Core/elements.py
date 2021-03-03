@@ -27,6 +27,8 @@ from Core.science_utils import fixed_rate_condition
 from Core.science_utils import flex_rate_condition
 from Core.science_utils import shannon
 
+from Core.parameters import Connection
+
 from pathlib import Path
 
 root = Path(__file__).parent.parent
@@ -309,7 +311,9 @@ class Line:
     # Calculates the optimal launch power
     def optimized_launch_power(self):
         eta_nli = eta_nli_generator()
-        p_opt = (self.ase_generation() / (2 * eta_nli * Bn)) ** (1. / 3.)
+        n_span = self.n_amplifiers - 1
+        p_opt = (self.ase_generation() / (2 * eta_nli * Bn * n_span)) ** (1. / 3.)
+
         return p_opt
 
     # Propagates the signal information along the line
@@ -759,4 +763,52 @@ class Network:
         for i in range(len(input_node)):
             traffic_matrix[input_node_index[i]][output_node_index[i]] = traffic_matrix[input_node_index[i]][
                                                                             output_node_index[i]] + 100 * M
+        return traffic_matrix
+
+    def connections_management(self, traffic_matrix, node_list, snr_or_latency_choice):
+        continue_streaming = True
+        connection_list = []
+        stream_end_index = 0
+
+        while continue_streaming:
+            stream_start_index = stream_end_index
+            for i in range(0, traffic_matrix.shape[0]):
+                for j in range(0, traffic_matrix.shape[1]):
+                    requested_bit_rate = traffic_matrix[i][j]
+                    traffic_matrix_index = [i, j]
+                    if requested_bit_rate != 0:
+                        connection_list.append(Connection(node_list[i], node_list[j], input_signal_power,
+                                                          traffic_matrix_index))
+                        stream_end_index = stream_end_index + 1
+
+            # Stream call
+            self.stream(connection_list[stream_start_index:stream_end_index], snr_or_latency_choice)
+
+            no_element_changed = True
+            traffic_matrix_is_zero = True
+
+            for i in range(0, traffic_matrix.shape[0]):
+                for j in range(0, traffic_matrix.shape[1]):
+                    for k in range(stream_start_index, stream_end_index):
+                        if [i, j] == connection_list[k].traffic_matrix_index:
+                            traffic_matrix[i, j] = traffic_matrix[i, j] - connection_list[k].bit_rate
+                            if traffic_matrix[i, j] < 0:
+                                traffic_matrix[i, j] = 0
+                            if connection_list[k].bit_rate != 0:
+                                no_element_changed = False
+                    if traffic_matrix[i, j] != 0:
+                        traffic_matrix_is_zero = False
+
+            if no_element_changed or traffic_matrix_is_zero:
+                continue_streaming = False
+
+        return [traffic_matrix, connection_list]
+
+    def handle_output_traffix_matrix(self, traffic_matrix):
+        for i in range(0, traffic_matrix.shape[0]):
+            for j in range(0, traffic_matrix.shape[1]):
+                if i == j:
+                    traffic_matrix[i, j] = np.inf
+                elif traffic_matrix[i, j] > 0:
+                    traffic_matrix[i, j] = np.inf
         return traffic_matrix

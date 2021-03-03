@@ -6,10 +6,8 @@ from Core.elements import Network
 from Core.utils import json_path1
 from Core.utils import json_path2
 from Core.utils import json_path3
-from Core.utils import input_signal_power
 from Core.utils import number_of_connections
 from Core.utils import snr_or_latency_choice
-from Core.parameters import Connection
 
 from pathlib import Path
 
@@ -17,12 +15,12 @@ root = Path(__file__).parent.parent
 
 
 def main():
-    for M in range(1, 8):
+    for M in range(1, 11):
 
         # Initialize an object network of class Network
         network = Network(root / json_path1)
 
-        # Fills "successive" attributes of Nodes and Lines
+        # Fills "successive" attributes of Nodes and Ligines
         network.connect()
 
         # Fills weighted paths and initialize route_space attributes
@@ -55,44 +53,13 @@ def main():
         file.close()
 
         # Connection generation
-        continue_streaming = True
-        connection_list = []
-        stream_end_index = 0
-        stream_start_index = 0
-        while continue_streaming:
-            stream_start_index = stream_end_index
-            for i in range(0, traffic_matrix.shape[0]):
-                for j in range(0, traffic_matrix.shape[1]):
-                    requested_bit_rate = traffic_matrix[i][j]
-                    traffic_matrix_index = [i, j]
-                    if requested_bit_rate != 0:
-                        connection_list.append(Connection(node_list[i], node_list[j], input_signal_power,
-                                                          traffic_matrix_index))
-                        stream_end_index = stream_end_index + 1
-
-            # Stream call
-            network.stream(connection_list[stream_start_index:stream_end_index], snr_or_latency_choice)
-
-            no_element_changed = True
-            traffic_matrix_is_zero = True
-
-            for i in range(0, traffic_matrix.shape[0]):
-                for j in range(0, traffic_matrix.shape[1]):
-                    for k in range(stream_start_index, stream_end_index):
-                        if [i, j] == connection_list[k].traffic_matrix_index:
-                            traffic_matrix[i, j] = traffic_matrix[i, j] - connection_list[k].bit_rate
-                            if traffic_matrix[i, j] < 0:
-                                traffic_matrix[i, j] = 0
-                            if connection_list[k].bit_rate != 0:
-                                no_element_changed = False
-                    if traffic_matrix[i, j] != 0:
-                        traffic_matrix_is_zero = False
-
-            if no_element_changed or traffic_matrix_is_zero:
-                continue_streaming = False
+        connections_management_output = network.connections_management(traffic_matrix, node_list, snr_or_latency_choice)
+        traffic_matrix = connections_management_output[0]
+        connection_list = connections_management_output[1]
 
         # writes the output matrix to the output file
         traffic_matrix_mat = np.asmatrix(traffic_matrix)
+        traffic_matrix_mat = network.handle_output_traffix_matrix(traffic_matrix_mat)
         with open(root / traffic_matrix_1_path, "a") as out_file_1:
             for line in traffic_matrix_mat:
                 np.savetxt(out_file_1, line, fmt='%.2f')
@@ -150,44 +117,13 @@ def main():
         file.close()
 
         # Connection generation
-        continue_streaming = True
-        connection_list2 = []
-        stream_end_index = 0
-        stream_start_index = 0
-        while continue_streaming:
-            stream_start_index = stream_end_index
-            for i in range(0, traffic_matrix2.shape[0]):
-                for j in range(0, traffic_matrix2.shape[1]):
-                    requested_bit_rate = traffic_matrix2[i][j]
-                    traffic_matrix_index = [i, j]
-                    if requested_bit_rate != 0:
-                        connection_list2.append(Connection(node_list[i], node_list[j], input_signal_power,
-                                                           traffic_matrix_index))
-                        stream_end_index = stream_end_index + 1
-
-            # Stream call
-            network2.stream(connection_list2[stream_start_index:stream_end_index], snr_or_latency_choice)
-
-            no_element_changed = True
-            traffic_matrix_is_zero = True
-
-            for i in range(0, traffic_matrix2.shape[0]):
-                for j in range(0, traffic_matrix2.shape[1]):
-                    for k in range(stream_start_index, stream_end_index):
-                        if [i, j] == connection_list2[k].traffic_matrix_index:
-                            traffic_matrix2[i, j] = traffic_matrix2[i, j] - connection_list2[k].bit_rate
-                            if traffic_matrix2[i, j] < 0:
-                                traffic_matrix2[i, j] = 0
-                            if connection_list2[k].bit_rate != 0:
-                                no_element_changed = False
-                    if traffic_matrix2[i, j] != 0:
-                        traffic_matrix_is_zero = False
-
-            if no_element_changed or traffic_matrix_is_zero:
-                continue_streaming = False
+        connections_management_output2 = network2.connections_management(traffic_matrix2, node_list, snr_or_latency_choice)
+        traffic_matrix2 = connections_management_output2[0]
+        connection_list2 = connections_management_output2[1]
 
         # writes the output matrix to the output file
         traffic_matrix_mat2 = np.asmatrix(traffic_matrix2)
+        traffic_matrix_mat2 = network2.handle_output_traffix_matrix(traffic_matrix_mat2)
         with open(root / traffic_matrix_2_path, "a") as out_file_2:
             for line in traffic_matrix_mat2:
                 np.savetxt(out_file_2, line, fmt='%.2f')
@@ -246,44 +182,13 @@ def main():
         file.close()
 
         # Connection generation
-        continue_streaming = True
-        connection_list3 = []
-        stream_end_index = 0
-        stream_start_index = 0
-        while continue_streaming:
-            stream_start_index = stream_end_index
-            for i in range(0, traffic_matrix3.shape[0]):
-                for j in range(0, traffic_matrix3.shape[1]):
-                    requested_bit_rate = traffic_matrix3[i][j]
-                    traffic_matrix_index = [i, j]
-                    if requested_bit_rate != 0:
-                        connection_list3.append(Connection(node_list[i], node_list[j], input_signal_power,
-                                                           traffic_matrix_index))
-                        stream_end_index = stream_end_index + 1
-
-            # Stream call
-            network3.stream(connection_list3[stream_start_index:stream_end_index], snr_or_latency_choice)
-
-            no_element_changed = True
-            traffic_matrix_is_zero = True
-
-            for i in range(0, traffic_matrix3.shape[0]):
-                for j in range(0, traffic_matrix3.shape[1]):
-                    for k in range(stream_start_index, stream_end_index):
-                        if [i, j] == connection_list3[k].traffic_matrix_index:
-                            traffic_matrix3[i, j] = traffic_matrix3[i, j] - connection_list3[k].bit_rate
-                            if traffic_matrix3[i, j] < 0:
-                                traffic_matrix3[i, j] = 0
-                            if connection_list3[k].bit_rate != 0:
-                                no_element_changed = False
-                    if traffic_matrix3[i, j] != 0:
-                        traffic_matrix_is_zero = False
-
-            if no_element_changed or traffic_matrix_is_zero:
-                continue_streaming = False
+        connections_management_output3 = network3.connections_management(traffic_matrix3, node_list, snr_or_latency_choice)
+        traffic_matrix3 = connections_management_output3[0]
+        connection_list3 = connections_management_output3[1]
 
         # writes the output matrix to the output file
         traffic_matrix_mat3 = np.asmatrix(traffic_matrix3)
+        traffic_matrix_mat3 = network3.handle_output_traffix_matrix(traffic_matrix_mat3)
         with open(root / traffic_matrix_3_path, "a") as out_file_3:
             for line in traffic_matrix_mat3:
                 np.savetxt(out_file_3, line, fmt='%.2f')
