@@ -1,16 +1,16 @@
 M = 4
 
 - Blocking events:
-	Blocking events (Fixed-Rate) = 52
-	Blocking events (Flex-Rate) = 0
-	Blocking events (Shannon) = 0
+	Blocking events (Fixed-Rate) = 54
+	Blocking events (Flex-Rate) = 3
+	Blocking events (Shannon) = 1
 
 - Bit Rate mean:
 	Bit rate mean for full fixed rate = 100.0 Gbps
 	Bit rate mean for full flex rate = 400.0 Gbps
-	Bit rate mean for full shannon = 472.3729456447963 Gbps
+	Bit rate mean for full shannon = 469.7405564893379 Gbps
 
 - Capacities:
-	Capacity for full fixed rate = 14600 Gbps
-	Capacity for full flex rate = 40000 Gbps
-	Capacity for full shannon = 45347.80278190044 Gbps
+	Capacity for full fixed rate = 14000 Gbps
+	Capacity for full flex rate = 38800 Gbps
+	Capacity for full shannon = 45095.09342297644 Gbps
