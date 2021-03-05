@@ -685,6 +685,7 @@ class Network:
                     bit_rate = self.calculate_bit_rate(deployed_lightpath, self.nodes[first_node].transceiver)
 
                     if bit_rate == 0:
+                        # The connection is rejected
                         self.clean_propagate(deployed_lightpath)
                     else:
                         connection_list[i].bit_rate = bit_rate
@@ -705,14 +706,24 @@ class Network:
                                                                      connection_list[i].output_node)
                 best_path_index_list.append(find_best_latency_output[0])
                 free_channel = find_best_latency_output[1]
-                # If the path is found, updates the connection class
+
+                # Bit-rate check
                 if best_path_index_list[i] != -1:
+                    first_node = self.path_list[best_path_index_list[i]][0]
+
                     deployed_lightpath = Lightpath(input_signal_power,
                                                    self.path_list[best_path_index_list[i]], free_channel)
                     deployed_lightpath = self.propagate(deployed_lightpath)
-                    connection_list[i].latency = deployed_lightpath.latency
-                    connection_list[i].snr = linear_to_db_conversion(
-                        deployed_lightpath.signal_power / deployed_lightpath.noise_power)
+                    bit_rate = self.calculate_bit_rate(deployed_lightpath, self.nodes[first_node].transceiver)
+
+                    if bit_rate == 0:
+                        # The connection is rejected
+                        self.clean_propagate(deployed_lightpath)
+                    else:
+                        connection_list[i].bit_rate = bit_rate
+                        connection_list[i].latency = deployed_lightpath.latency
+                        connection_list[i].snr = linear_to_db_conversion(
+                            deployed_lightpath.signal_power / deployed_lightpath.noise_power)
 
                     self.update_route_space()
 
