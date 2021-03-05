@@ -262,6 +262,11 @@ def update_capacity(capacity_network1, capacity_network2, capacity_network3, bit
     return
 
 
+def update_bit_rate_shannon(average_bit_rate_shannon, bit_rate_array3):
+    average_bit_rate_shannon.append(np.mean(bit_rate_array3))
+    return
+
+
 def plot_congestion(root, average_congestion_network1, average_congestion_network2, average_congestion_network3):
 
     M = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
@@ -272,7 +277,7 @@ def plot_congestion(root, average_congestion_network1, average_congestion_networ
     plt.plot(M, average_congestion_network3, label="Shannon")
     plt.xlabel('M')
     plt.ylabel('Congestion [%]')
-    plt.title('Congestion')
+    plt.title('Congestion vs M')
     plt.legend()
     plt.savefig(root / fig_path)
     plt.show()
@@ -295,8 +300,24 @@ def plot_capacity(root, capacity_network1, capacity_network2, capacity_network3)
     plt.plot(M, capacity_network3 / 1e3, label="Shannon")
     plt.xlabel('M')
     plt.ylabel('Capacity [Tbps]')
-    plt.title('Capacity')
+    plt.title('Capacity vs M')
     plt.legend()
+    plt.savefig(root / fig_path)
+    plt.show()
+
+    return
+
+
+def plot_bit_rate_shannon(root, average_bit_rate_shannon):
+
+    M = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+    fig_path = 'Results/Lab10/average_bit_rate_shannon.png'
+
+    plt.plot(M, average_bit_rate_shannon)
+    plt.xlabel('M')
+    plt.ylabel('Average Bit Rate (Shannon) [Gbps]')
+    plt.title('Average Bit Rate vs M (Shannon) ')
     plt.savefig(root / fig_path)
     plt.show()
 

@@ -16,6 +16,8 @@ from Core.utils import update_congestion
 from Core.utils import plot_congestion
 from Core.utils import update_capacity
 from Core.utils import plot_capacity
+from Core.utils import update_bit_rate_shannon
+from Core.utils import plot_bit_rate_shannon
 
 from pathlib import Path
 
@@ -29,6 +31,7 @@ def main():
     capacity_network1 = []
     capacity_network2 = []
     capacity_network3 = []
+    average_bit_rate_shannon = []
     for M in range(1, 11):
 
         # Initialize an object network of class Network
@@ -148,9 +151,11 @@ def main():
                           average_congestion_network2, average_congestion_network3)
         update_capacity(capacity_network1, capacity_network2, capacity_network3, bit_rate_array, bit_rate_array2,
                         bit_rate_array3)
+        update_bit_rate_shannon(average_bit_rate_shannon, bit_rate_array3)
 
     plot_congestion(root, average_congestion_network1, average_congestion_network2, average_congestion_network3)
     plot_capacity(root, capacity_network1, capacity_network2, capacity_network3)
+    plot_bit_rate_shannon(root, average_bit_rate_shannon)
 
 
 if __name__ == '__main__':
