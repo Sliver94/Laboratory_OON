@@ -122,7 +122,8 @@ def generate_output_arrays(connection_list):
     return [snr_array, latency_array, bit_rate_array, number_of_blocks_full_fixed]
 
 
-def write_output_file(M, root, number_of_blocks_full_fixed, number_of_blocks_full_flex, number_of_blocks_full_shannon, bit_rate_array, bit_rate_array2, bit_rate_array3):
+def write_output_file(M, root, number_of_blocks_full_fixed, number_of_blocks_full_flex, number_of_blocks_full_shannon,
+                      bit_rate_array, bit_rate_array2, bit_rate_array3):
     file_path = 'Results/Lab10/bit_rates_capacities_and_blocking_events_M_' + str(M) + '.txt'
     file = open(root / file_path, "w")
 
@@ -161,7 +162,8 @@ def write_output_file(M, root, number_of_blocks_full_fixed, number_of_blocks_ful
     return
 
 
-def plot_results(M, root, snr_array, latency_array, bit_rate_array, snr_array2, latency_array2, bit_rate_array2, snr_array3, latency_array3, bit_rate_array3):
+def plot_results(M, root, snr_array, latency_array, bit_rate_array, snr_array2, latency_array2, bit_rate_array2,
+                 snr_array3, latency_array3, bit_rate_array3):
     fig_path1 = 'Results/Lab10/snr_distribution_fixed_M_' + str(M) + '.png'
     fig_path2 = 'Results/Lab10/latency_distribution_fixed_M_' + str(M) + '.png'
     fig_path3 = 'Results/Lab10/bit_rate_distribution_fixed_M_' + str(M) + '.png'
@@ -229,3 +231,73 @@ def plot_results(M, root, snr_array, latency_array, bit_rate_array, snr_array2, 
     plt.show()
     return
 
+
+def update_congestion(network, network2, network3, average_congestion_network1, average_congestion_network2,
+                      average_congestion_network3):
+    all_lines = ['AB', 'AC', 'AD', 'BA', 'BD', 'BF', 'CA', 'CD', 'CE', 'DA', 'DB', 'DC', 'DE', 'DF', 'EC', 'ED', 'EF',
+                 'FB', 'FD', 'FE']
+    free_channels_network1 = []
+    free_channels_network2 = []
+    free_channels_network3 = []
+
+    for line in all_lines:
+        free_channels_network1.append(np.sum(network.lines[line].state))
+        free_channels_network2.append(np.sum(network2.lines[line].state))
+        free_channels_network3.append(np.sum(network3.lines[line].state))
+
+    average_congestion_network1.append((number_of_channels - np.sum(free_channels_network1) / len(all_lines)) *
+                                       100 / number_of_channels)
+    average_congestion_network2.append((number_of_channels - np.sum(free_channels_network2) / len(all_lines)) *
+                                       100 / number_of_channels)
+    average_congestion_network3.append((number_of_channels - np.sum(free_channels_network3) / len(all_lines)) *
+                                       100 / number_of_channels)
+    return
+
+
+def update_capacity(capacity_network1, capacity_network2, capacity_network3, bit_rate_array, bit_rate_array2,
+                    bit_rate_array3):
+    capacity_network1.append(np.sum(bit_rate_array))
+    capacity_network2.append(np.sum(bit_rate_array2))
+    capacity_network3.append(np.sum(bit_rate_array3))
+    return
+
+
+def plot_congestion(root, average_congestion_network1, average_congestion_network2, average_congestion_network3):
+
+    M = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+    fig_path = 'Results/Lab10/congestion.png'
+    plt.plot(M, average_congestion_network1, label="Fixed-Rate")
+    plt.plot(M, average_congestion_network2, label="Flex-Rate")
+    plt.plot(M, average_congestion_network3, label="Shannon")
+    plt.xlabel('M')
+    plt.ylabel('Congestion [%]')
+    plt.title('Congestion')
+    plt.legend()
+    plt.savefig(root / fig_path)
+    plt.show()
+
+    return
+
+
+def plot_capacity(root, capacity_network1, capacity_network2, capacity_network3):
+
+    M = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+    fig_path = 'Results/Lab10/capacity.png'
+
+    capacity_network1 = np.array(capacity_network1)
+    capacity_network2 = np.array(capacity_network2)
+    capacity_network3 = np.array(capacity_network3)
+
+    plt.plot(M, capacity_network1 / 1e3, label="Fixed-Rate")
+    plt.plot(M, capacity_network2 / 1e3, label="Flex-Rate")
+    plt.plot(M, capacity_network3 / 1e3, label="Shannon")
+    plt.xlabel('M')
+    plt.ylabel('Capacity [Tbps]')
+    plt.title('Capacity')
+    plt.legend()
+    plt.savefig(root / fig_path)
+    plt.show()
+
+    return

@@ -197,8 +197,8 @@ class Node:
             line = self.successive[line_label]
             signal_information.previous_node = path[0]
             signal_information.next()
-            signal_information = line.clean_propagate(signal_information)
-        return signal_information
+            line.clean_propagate(signal_information)
+        return
 
 
 # Models the lines of the network: contains the name of the line, its length, the list of the connected nodes and
@@ -340,8 +340,8 @@ class Line:
         self.state[signal_information.channel] = 1
 
         node = self.successive[signal_information.path[0]]
-        signal_information = node.clean_propagate(signal_information)
-        return signal_information
+        node.clean_propagate(signal_information)
+        return
 
 
 # Models the the network: contains the route space, the list of all the paths with the related snr/latency
@@ -587,11 +587,11 @@ class Network:
         propagated_signal_information = start_node.propagate(signal_information)
         return propagated_signal_information
 
-    # Cleans the path when bitrate condition is not satisfied
+    # Cleans the path when bit-rate condition is not satisfied
     def clean_propagate(self, signal_information):
         path = signal_information.path
         start_node = self.nodes[path[0]]
-        propagated_signal_information = start_node.clean_propagate(signal_information)
+        start_node.clean_propagate(signal_information)
         return
 
     # Finds the path between two nodes with the best snr
@@ -815,7 +815,7 @@ class Network:
 
         return [traffic_matrix, connection_list]
 
-    def handle_output_traffix_matrix(self, traffic_matrix):
+    def handle_output_traffic_matrix(self, traffic_matrix):
         for i in range(0, traffic_matrix.shape[0]):
             for j in range(0, traffic_matrix.shape[1]):
                 if i == j:

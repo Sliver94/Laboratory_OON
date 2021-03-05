@@ -1,6 +1,7 @@
 import numpy as np
 
 from Core.elements import Network
+
 from Core.utils import json_path1
 from Core.utils import json_path2
 from Core.utils import json_path3
@@ -11,6 +12,10 @@ from Core.utils import write_output_file
 from Core.utils import plot_results
 from Core.utils import generate_requests
 from Core.utils import generate_output_arrays
+from Core.utils import update_congestion
+from Core.utils import plot_congestion
+from Core.utils import update_capacity
+from Core.utils import plot_capacity
 
 from pathlib import Path
 
@@ -18,6 +23,12 @@ root = Path(__file__).parent.parent
 
 
 def main():
+    average_congestion_network1 = []
+    average_congestion_network2 = []
+    average_congestion_network3 = []
+    capacity_network1 = []
+    capacity_network2 = []
+    capacity_network3 = []
     for M in range(1, 11):
 
         # Initialize an object network of class Network
@@ -40,8 +51,8 @@ def main():
 
         # writes the input traffic matrix to the output file
         traffic_matrix_mat = np.asmatrix(traffic_matrix)
-        input_traffic_matrix_1_path = 'Results/Lab10/input_traffic_matrix_fixed_M_' + str(M) + '.png'
-        print_input_matrix(traffic_matrix_mat, node_list, root, input_traffic_matrix_1_path)
+        input_traffic_matrix_path = 'Results/Lab10/input_traffic_matrix_M_' + str(M) + '.png'
+        print_input_matrix(traffic_matrix_mat, node_list, root, input_traffic_matrix_path)
 
         # Connection generation
         connections_management_output = network.connections_management(traffic_matrix, node_list, snr_or_latency_choice)
@@ -50,7 +61,7 @@ def main():
 
         # writes the output matrix to the output file
         traffic_matrix_mat = np.asmatrix(traffic_matrix)
-        traffic_matrix_mat = network.handle_output_traffix_matrix(traffic_matrix_mat)
+        traffic_matrix_mat = network.handle_output_traffic_matrix(traffic_matrix_mat)
         output_traffic_matrix_1_path = 'Results/Lab10/output_traffic_matrix_fixed_M_' + str(M) + '.png'
         print_output_matrix(traffic_matrix_mat, node_list, root, output_traffic_matrix_1_path)
 
@@ -74,11 +85,6 @@ def main():
 
         traffic_matrix2 = network2.generate_traffic_matrix(input_node, output_node, M)
 
-        # writes the input traffic matrix to the output file
-        traffic_matrix_mat2 = np.asmatrix(traffic_matrix2)
-        input_traffic_matrix_2_path = 'Results/Lab10/input_traffic_matrix_flex_M_' + str(M) + '.png'
-        print_input_matrix(traffic_matrix_mat2, node_list, root, input_traffic_matrix_2_path)
-
         # Connection generation
         connections_management_output2 = network2.connections_management(traffic_matrix2, node_list,
                                                                          snr_or_latency_choice)
@@ -87,7 +93,7 @@ def main():
 
         # writes the output matrix to the output file
         traffic_matrix_mat2 = np.asmatrix(traffic_matrix2)
-        traffic_matrix_mat2 = network2.handle_output_traffix_matrix(traffic_matrix_mat2)
+        traffic_matrix_mat2 = network2.handle_output_traffic_matrix(traffic_matrix_mat2)
         output_traffic_matrix_2_path = 'Results/Lab10/output_traffic_matrix_flex_M_' + str(M) + '.png'
         print_output_matrix(traffic_matrix_mat2, node_list, root, output_traffic_matrix_2_path)
 
@@ -111,11 +117,6 @@ def main():
 
         traffic_matrix3 = network3.generate_traffic_matrix(input_node, output_node, M)
 
-        # writes the input traffic matrix to the output file
-        traffic_matrix_mat3 = np.asmatrix(traffic_matrix3)
-        input_traffic_matrix_3_path = 'Results/Lab10/input_traffic_matrix_shannon_M_' + str(M) + '.png'
-        print_input_matrix(traffic_matrix_mat3, node_list, root, input_traffic_matrix_3_path)
-
         # Connection generation
         connections_management_output3 = network3.connections_management(traffic_matrix3, node_list,
                                                                          snr_or_latency_choice)
@@ -124,7 +125,7 @@ def main():
 
         # writes the output matrix to the output file
         traffic_matrix_mat3 = np.asmatrix(traffic_matrix3)
-        traffic_matrix_mat3 = network3.handle_output_traffix_matrix(traffic_matrix_mat3)
+        traffic_matrix_mat3 = network3.handle_output_traffic_matrix(traffic_matrix_mat3)
         output_traffic_matrix_3_path = 'Results/Lab10/output_traffic_matrix_shannon_M_' + str(M) + '.png'
         print_output_matrix(traffic_matrix_mat3, node_list, root, output_traffic_matrix_3_path)
 
@@ -142,6 +143,14 @@ def main():
         # Result plotting
         plot_results(M, root, snr_array, latency_array, bit_rate_array, snr_array2, latency_array2, bit_rate_array2,
                      snr_array3, latency_array3, bit_rate_array3)
+
+        update_congestion(network, network2, network3, average_congestion_network1,
+                          average_congestion_network2, average_congestion_network3)
+        update_capacity(capacity_network1, capacity_network2, capacity_network3, bit_rate_array, bit_rate_array2,
+                        bit_rate_array3)
+
+    plot_congestion(root, average_congestion_network1, average_congestion_network2, average_congestion_network3)
+    plot_capacity(root, capacity_network1, capacity_network2, capacity_network3)
 
 
 if __name__ == '__main__':
