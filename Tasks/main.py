@@ -1,5 +1,3 @@
-import numpy as np
-
 from Core.elements import Network
 
 from Core.utils import json_path1
@@ -18,6 +16,7 @@ from Core.utils import update_capacity
 from Core.utils import plot_capacity
 from Core.utils import update_bit_rate_shannon
 from Core.utils import plot_bit_rate_shannon
+from Core.utils import generate_node_list
 
 from pathlib import Path
 
@@ -32,7 +31,15 @@ def main():
     capacity_network2 = []
     capacity_network3 = []
     average_bit_rate_shannon = []
+
+    node_list = generate_node_list(root / json_path1)
+
     for M in range(1, 11):
+
+        # Input/Output and requests generation
+        generate_requests_output = generate_requests()
+        input_node = generate_requests_output[0]
+        output_node = generate_requests_output[1]
 
         # Initialize an object network of class Network
         network = Network(root / json_path1)
@@ -40,33 +47,27 @@ def main():
         # Fills "successive" attributes of Nodes and Lines
         network.connect()
 
-        # Fills weighted paths and initialize route_space attributes
+        # Fills weighted paths with an initial probing and initialize route_space attributes
         network.initialize(root / json_path1)
-
-        # Input/Output and requests generation
-        generate_requests_output = generate_requests()
-        input_node = generate_requests_output[0]
-        output_node = generate_requests_output[1]
 
         # Generate traffic matrix
         traffic_matrix = network.generate_traffic_matrix(input_node, output_node, M)
-        node_list = ['A', 'B', 'C', 'D', 'E', 'F']
 
-        # writes the input traffic matrix to the output file
-        traffic_matrix_mat = np.asmatrix(traffic_matrix)
+        # Saves the input traffic matrix
         input_traffic_matrix_path = 'Results/Lab10/input_traffic_matrix_M_' + str(M) + '.png'
-        print_input_matrix(traffic_matrix_mat, node_list, root, input_traffic_matrix_path)
+        print_input_matrix(traffic_matrix, node_list, root, input_traffic_matrix_path)
 
         # Connection generation
+        # Deploys all possible lightpaths until all requests are satisfied or until the network saturates
+        # Generates the output traffic matrix
         connections_management_output = network.connections_management(traffic_matrix, node_list, snr_or_latency_choice)
-        traffic_matrix = connections_management_output[0]
+#        traffic_matrix = connections_management_output[0]
         connection_list = connections_management_output[1]
+        output_traffic_matrix = connections_management_output[2]
 
-        # writes the output matrix to the output file
-        traffic_matrix_mat = np.asmatrix(traffic_matrix)
-        traffic_matrix_mat = network.handle_output_traffic_matrix(traffic_matrix_mat)
+        # Saves the output traffic matrix
         output_traffic_matrix_1_path = 'Results/Lab10/output_traffic_matrix_fixed_M_' + str(M) + '.png'
-        print_output_matrix(traffic_matrix_mat, node_list, root, output_traffic_matrix_1_path)
+        print_output_matrix(output_traffic_matrix, node_list, root, output_traffic_matrix_1_path)
 
         # Generates snr, latency, bit rate for plotting and computes the number of blocking events
         generate_output_arrays_output = generate_output_arrays(connection_list)
@@ -89,16 +90,17 @@ def main():
         traffic_matrix2 = network2.generate_traffic_matrix(input_node, output_node, M)
 
         # Connection generation
+        # Deploys all possible lightpaths until all requests are satisfied or until the network saturates
+        # Generates the output traffic matrix
         connections_management_output2 = network2.connections_management(traffic_matrix2, node_list,
                                                                          snr_or_latency_choice)
-        traffic_matrix2 = connections_management_output2[0]
+#        traffic_matrix2 = connections_management_output2[0]
         connection_list2 = connections_management_output2[1]
+        output_traffic_matrix2 = connections_management_output2[2]
 
-        # writes the output matrix to the output file
-        traffic_matrix_mat2 = np.asmatrix(traffic_matrix2)
-        traffic_matrix_mat2 = network2.handle_output_traffic_matrix(traffic_matrix_mat2)
+        # Saves the output traffic matrix
         output_traffic_matrix_2_path = 'Results/Lab10/output_traffic_matrix_flex_M_' + str(M) + '.png'
-        print_output_matrix(traffic_matrix_mat2, node_list, root, output_traffic_matrix_2_path)
+        print_output_matrix(output_traffic_matrix2, node_list, root, output_traffic_matrix_2_path)
 
         # Generates snr, latency, bit rate for plotting and computes the number of blocking events
         generate_output_arrays_output2 = generate_output_arrays(connection_list2)
@@ -121,16 +123,17 @@ def main():
         traffic_matrix3 = network3.generate_traffic_matrix(input_node, output_node, M)
 
         # Connection generation
+        # Deploys all possible lightpaths until all requests are satisfied or until the network saturates
+        # Generates the output traffic matrix
         connections_management_output3 = network3.connections_management(traffic_matrix3, node_list,
                                                                          snr_or_latency_choice)
-        traffic_matrix3 = connections_management_output3[0]
+#        traffic_matrix3 = connections_management_output3[0]
         connection_list3 = connections_management_output3[1]
+        output_traffic_matrix3 = connections_management_output3[2]
 
-        # writes the output matrix to the output file
-        traffic_matrix_mat3 = np.asmatrix(traffic_matrix3)
-        traffic_matrix_mat3 = network3.handle_output_traffic_matrix(traffic_matrix_mat3)
+        # Saves the output traffic matrix
         output_traffic_matrix_3_path = 'Results/Lab10/output_traffic_matrix_shannon_M_' + str(M) + '.png'
-        print_output_matrix(traffic_matrix_mat3, node_list, root, output_traffic_matrix_3_path)
+        print_output_matrix(output_traffic_matrix3, node_list, root, output_traffic_matrix_3_path)
 
         # Generates snr, latency, bit rate for plotting and computes the number of blocking events
         generate_output_arrays_output3 = generate_output_arrays(connection_list3)

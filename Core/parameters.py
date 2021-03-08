@@ -53,4 +53,3 @@ class Connection:
     @traffic_matrix_index.setter
     def traffic_matrix_index(self, traffic_matrix_index):
         self._traffic_matrix_index = traffic_matrix_index
-

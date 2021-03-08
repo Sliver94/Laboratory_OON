@@ -362,28 +362,39 @@ class Network:
         # Creation of node and line instances
         for node_label in node_json:
             # Create the node instance
+            # creates node_dict, that contains all the information of the node "node_label".
             node_dict = node_json[node_label]
+            # Adds the name of the node
             node_dict['label'] = node_label
+            # Creates the object "node" and adds it as an attribute of Network
             node = Node(node_dict)
             self._nodes[node_label] = node
+            # Saves the switching matrix of the node
             self.switching_matrix_dict[node_label] = node_dict['switching_matrix']
+            # Converts lists in arrays
             for connected_node1_label in self.switching_matrix_dict[node_label]:
                 for connected_node2_label in self.switching_matrix_dict[node_label][connected_node1_label]:
                     self.switching_matrix_dict[node_label][connected_node1_label][connected_node2_label] = \
                         np.array(self.switching_matrix_dict[node_label][connected_node1_label][connected_node2_label])
+            # Saves the type of transceiver of the node
             self.nodes[node_label].transceiver = node_json[node_label]['transceiver']
 
             # Create the line instances
             for connected_node_label in node_dict['connected_nodes']:
+                # Creates the line label
                 line_dict = {}
                 line_label = node_label + connected_node_label
                 line_dict['label'] = line_label
+                # Computes the length of the line
                 node_position = np.array(node_json[node_label]['position'])
                 connected_node_position = np.array(node_json[connected_node_label]['position'])
                 line_dict['length'] = np.sqrt(np.sum((node_position - connected_node_position) ** 2))
+                # Saves the number of amplifiers (booster, pre-amplifier and in-line amplifiers):
+                # 1 amplifier every 80 km plus the pre-amplifier
                 line_dict['n_amplifiers'] = math.ceil(
-                    line_dict['length'] / 80000) + 1  # booster, pre-amplifier and in-line amplifiers
+                    line_dict['length'] / 80000) + 1
                 line_dict['alpha'] = alpha
+                # Creates the object
                 line = Line(line_dict)
                 self._lines[line_label] = line
 
@@ -392,8 +403,8 @@ class Network:
         return self._weighted_paths
 
     @weighted_paths.setter
-    def weighted_paths(self, df):
-        self._weighted_paths = df
+    def weighted_paths(self, dataframe):
+        self._weighted_paths = dataframe
 
     @property
     def nodes(self):
@@ -430,7 +441,7 @@ class Network:
     # Initializes the network class
     def initialize(self, json_path):
         # Creates a data frame that will be filled with all the possible paths information.
-        df = pd.DataFrame()
+        dataframe = pd.DataFrame()
         node_labels = self._nodes.keys()
         pairs = []
         for label1 in node_labels:
@@ -466,20 +477,21 @@ class Network:
                     )
                 )
 
-        df['path'] = paths
-        df['latency'] = latencies
-        df['noise'] = noises
-        df['snr'] = snrs
-        df['transceiver'] = transceivers
+        dataframe['path'] = paths
+        dataframe['latency'] = latencies
+        dataframe['noise'] = noises
+        dataframe['snr'] = snrs
+        dataframe['transceiver'] = transceivers
 
         # Saves the contend of the data frame in weighted paths
-        self.weighted_paths = df
+        self.weighted_paths = dataframe
 
-        # Generates for all the possible paths a list of all the nodes
-        # and a list of all the lines belonging to that path
+        # Generates for all the possible paths a list of all the nodes and a list of all the lines belonging to that
+        # path, saving them in node_list_dict and line_list_dict
         self.generate_node_and_line_list()
 
-        # Cleans switching matrix and line state
+        # Cleans switching matrix and line state: after the initial probing the switching matrix and the line states
+        # are changed; this method re-initialize them to the initial state
         self.clean_after_initialization(json_path)
 
         # Initialize the route space
@@ -753,6 +765,7 @@ class Network:
 
         return Rb
 
+    # Generates the input traffic matrix organizing all requests
     def generate_traffic_matrix(self, input_node, output_node, M):
         traffic_matrix = np.zeros(shape=(6, 6))
         node_list = ['A', 'B', 'C', 'D', 'E', 'F']
@@ -776,6 +789,8 @@ class Network:
                                                                             output_node_index[i]] + 100 * M
         return traffic_matrix
 
+    # Deploys all possible lightpaths until all requests are satisfied or until the network saturates
+    # Generates the output traffic matrix
     def connections_management(self, traffic_matrix, node_list, snr_or_latency_choice):
         continue_streaming = True
         connection_list = []
@@ -813,13 +828,13 @@ class Network:
             if no_element_changed or traffic_matrix_is_zero:
                 continue_streaming = False
 
-        return [traffic_matrix, connection_list]
+        traffic_matrix_mat = np.asmatrix(traffic_matrix)
 
-    def handle_output_traffic_matrix(self, traffic_matrix):
-        for i in range(0, traffic_matrix.shape[0]):
-            for j in range(0, traffic_matrix.shape[1]):
+        for i in range(0, traffic_matrix_mat.shape[0]):
+            for j in range(0, traffic_matrix_mat.shape[1]):
                 if i == j:
-                    traffic_matrix[i, j] = np.inf
-                elif traffic_matrix[i, j] > 0:
-                    traffic_matrix[i, j] = np.inf
-        return traffic_matrix
+                    traffic_matrix_mat[i, j] = np.inf
+                elif traffic_matrix_mat[i, j] > 0:
+                    traffic_matrix_mat[i, j] = np.inf
+
+        return [traffic_matrix, connection_list, traffic_matrix_mat]

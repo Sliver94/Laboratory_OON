@@ -1,6 +1,7 @@
 import random as rnd
 import matplotlib.pyplot as plt
 import numpy as np
+import json
 
 c = 3 * (10 ** 8)  # Speed of light [m/s]
 c_network = 2 / 3 * c  # Speed of signal on the network
@@ -43,9 +44,10 @@ def generate_requests():
     return [input_node, output_node]
 
 
-def print_input_matrix(matrix, node_list, root, path):
+def print_input_matrix(traffic_matrix, node_list, root, path):
+    matrix = np.asmatrix(traffic_matrix)
     fig, ax = plt.subplots()
-    im = ax.imshow(matrix, cmap='winter')
+    ax.imshow(matrix, cmap='winter')
 
     # We want to show all ticks...
     ax.set_xticks(np.arange(len(node_list)))
@@ -57,8 +59,8 @@ def print_input_matrix(matrix, node_list, root, path):
     # Loop over data dimensions and create text annotations.
     for i in range(len(node_list)):
         for j in range(len(node_list)):
-            text = ax.text(j, i, matrix[i, j],
-                           ha="center", va="center", color="k")
+            ax.text(j, i, matrix[i, j],
+                    ha="center", va="center", color="k")
 
     ax.set_title("Input Traffic Matrix")
     fig.tight_layout()
@@ -69,7 +71,7 @@ def print_input_matrix(matrix, node_list, root, path):
 
 def print_output_matrix(matrix, node_list, root, path):
     fig, ax = plt.subplots()
-    im = ax.imshow(matrix, cmap='winter')
+    ax.imshow(matrix, cmap='winter')
 
     # We want to show all ticks...
     ax.set_xticks(np.arange(len(node_list)))
@@ -81,8 +83,8 @@ def print_output_matrix(matrix, node_list, root, path):
     # Loop over data dimensions and create text annotations.
     for i in range(len(node_list)):
         for j in range(len(node_list)):
-            text = ax.text(j, i, matrix[i, j],
-                           ha="center", va="center", color="k")
+            ax.text(j, i, matrix[i, j],
+                    ha="center", va="center", color="k")
 
     ax.set_title("Output Traffic Matrix")
     fig.tight_layout()
@@ -322,3 +324,11 @@ def plot_bit_rate_shannon(root, average_bit_rate_shannon):
     plt.show()
 
     return
+
+
+def generate_node_list(json_path):
+    node_json = json.load(open(json_path, 'r'))
+    node_list = []
+    for node_label in node_json:
+        node_list.append(node_label)
+    return node_list
