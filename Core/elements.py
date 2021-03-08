@@ -339,9 +339,6 @@ class Network:
         # Initialize the route space
         self.update_route_space()
 
-    #        print(self.route_space['C->A->D'])
-    #        print(self.nodes['A'].switching_matrix['C']['D'])
-
     # Generates for all the possible paths in weighted paths a list of all the nodes
     # and a list of all the lines belonging to that path
     def generate_node_and_line_list(self):
@@ -369,9 +366,6 @@ class Network:
         for node_label in node_json:
             # Create the node instance
             node_dict = node_json[node_label]
-#            node_dict['label'] = node_label
-#            node = Node(node_dict)
-#            self._nodes[node_label] = node
             self.switching_matrix_dict[node_label] = node_dict['switching_matrix']
             for connected_node1_label in self.switching_matrix_dict[node_label]:
                 for connected_node2_label in self.switching_matrix_dict[node_label][connected_node1_label]:
@@ -524,13 +518,9 @@ class Network:
             for channel in range(number_of_channels):
                 for line in line_list:
                     block[channel] = block[channel] * self.lines[line].state[channel]
-#                    if block[channel] == 0:
-#                        break
                 for node_index in range(1, len(node_list)-1):
                     block[channel] = block[channel] * self.nodes[node_list[node_index]].\
                         switching_matrix[node_list[node_index-1]][node_list[node_index+1]][channel]
-#                    if block[channel] == 0:
-#                        break
             route_space_dict[self.weighted_paths['path'][i]] = block
 
         self.route_space = pd.DataFrame(route_space_dict)
